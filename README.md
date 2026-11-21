@@ -21,15 +21,36 @@ How can you use this server on your device to access your files (see discussion 
 
 You may download latest development snapshot from [GitHub packages](https://github.com/wolpi/prim-ftpd/packages/).
 
+## State of this fork
+
+This fork contains the results of several code reviews of primitive ftpd. In short:
+
+| Topic | State |
+|-------|-------|
+| Large files (more than 4 GB), long transfers, resume | fixed and tested with 5 GiB files |
+| Bugs found in review (about 70) | fixed |
+| Security: password storage, limit of failed logins, ftp data connections, share intents, remote control | hardened |
+| Use without root, Android 10 to 16 | checked, see below |
+| ssh library | Apache SSHD 0.14 of 2014 replaced by Apache MINA SSHD 2.19.0 |
+
+Branches:
+* `fix/review-large-files-hardening`: all fixes, still with the old ssh library.
+* `feature/replace-ssh-library`: the same plus the new ssh library. This is the branch you are looking at if this text mentions it.
+
+**Not tested on an Android device yet.** Everything was tested with real ftp, sftp and scp clients against the server code
+running on a desktop JVM. Build the app and try it on a phone before you rely on it,
+[code-review/verification.md](code-review/verification.md) lists what to check.
+
 ## Some features:
 * Can optionally be started on system boot
 * Shows statusbar notification when server is running
 * Server can be stopped from statusbar
 * Shows information about how to connect on main screen
 * Optional wakelock while server runs to avoid uploads and downloads to be aborted
-* Optional encryption via sftp
+* Optional encryption via sftp, with current algorithms (curve25519, chacha20-poly1305, AES-GCM, ed25519)
 * Server can be announced
-* Public key authentication for sftp
+* Public key authentication for sftp (ed25519, RSA, ECDSA)
+* Resume of interrupted uploads and downloads, files larger than 4 GB
 * Optional anonymous login
 * Widget to start/stop server
 * Plugins for powertoggles and tasker (both must be enabled in preferences, see "Remote control" below)
@@ -71,7 +92,7 @@ Please read the security advisory linked there before enabling it: any app on yo
 * The password is stored as salted PBKDF2 hash. Passwords set with older versions keep working.
 * After 10 wrong passwords from one address, logins from that address are refused for one minute (ftp and sftp).
 * The sftp server is Apache MINA SSHD 2.x and offers current algorithms (e.g. curve25519, chacha20-poly1305, AES-GCM).
-  Nothing based on SHA-1, MD5 or CBC is offered, clients from before about 2014 can not connect.
+  Nothing based on SHA-1, MD5 or CBC is offered for key exchange, encryption and integrity.
 * ftp is not encrypted, use sftp in networks you do not trust. Keep anonymous login disabled.
 * Every risk which was found, fixed or left open is listed in [code-review/risks.md](code-review/risks.md).
 
@@ -128,16 +149,11 @@ SHA256: 71:51:AE:6D:56:F1:56:E6:72:24:E7:CA:3F:9C:00:DA:6F:70:30:B6:6C:C8:44:3F:
 
 ## SFTP vs SCP
 
-Note: since the ssh library has been replaced (branch `feature/replace-ssh-library`) scp works with and without option -O.
-The following applied to older versions.
+With the new ssh library `scp` works both ways: by the sftp protocol, which current versions of OpenSSH use by default,
+and by the legacy scp protocol (`scp -O`).
 
-When accessing this app's server via scp, it might be necessary for some clients (specific versions of ssh coming with linux distros), to specify option -O. 
-
-```
-scp -O ...
-```
-
-Probably you should generate new hostkeys for pftpd in such a case. Since version 7.4 the app shows at which time hostkeys had been generated. That gives you an indication if they grew too old.
+Clients must support current algorithms. If a very old client (before about 2014) can not connect anymore, update the client.
+The app shows at which time hostkeys had been generated, generate new ones if they grew too old.
 
 
 ## Running in the background
