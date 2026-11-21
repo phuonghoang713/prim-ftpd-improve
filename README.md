@@ -32,7 +32,7 @@ You may download latest development snapshot from [GitHub packages](https://gith
 * Public key authentication for sftp
 * Optional anonymous login
 * Widget to start/stop server
-* Plugins for powertoggles and tasker
+* Plugins for powertoggles and tasker (both must be enabled in preferences, see "Remote control" below)
 * Android 7 Quicksettings Tile
 * Optional root access
 * Optional support for Android Storage Access Framework to be able to write external SD-cards
@@ -50,8 +50,27 @@ On a device which is not rooted:
 * Ports must be above 1024 (defaults: 12345 for ftp, 1234 for sftp).
 * Storage type "Super user" can not be used, the server tells you so when you try to start it.
 
-Details: [code-review/non-root.md](code-review/non-root.md),
-Android 10 and higher: [code-review/android-versions.md](code-review/android-versions.md).
+Details: [code-review/non-root.md](code-review/non-root.md).
+
+## Android versions
+
+The app runs on Android 8.0 and higher. The code has been checked against the rules of Android 10 to 16
+(storage access, notification permission, foreground services, edge to edge), no blocker was found.
+That check was done by reading the code, it does not replace a test on your device.
+
+Details: [code-review/android-versions.md](code-review/android-versions.md).
+
+## Remote control
+
+Other apps can start and stop the server through the tasker and powertoggles plugins.
+Both only work if you enable 'tasker' in the preferences, which is disabled by default.
+Please read the security advisory linked there before enabling it: any app on your device can then control the server.
+
+## If the server does not start
+
+* A message tells you why (e.g. port in use, storage type "Super user" without root). The other server keeps running.
+* sftp needs a host key. Generate it in the app before starting the server by widget, tile or on boot.
+* Changed preferences are used the next time the server is started.
 
 ## Large files
 
@@ -72,6 +91,10 @@ tests with 5 GiB files: [code-review/verification.md](code-review/verification.m
 * [architecture/](architecture/README.md): how the app is built (components, runtime flows, storage types, Android integration)
 * [code-review/](code-review/README.md): findings of the code reviews, what has been verified
 * [code-review/improve/](code-review/improve/README.md): what has been improved
+* [code-review/verification.md](code-review/verification.md): what has been tested and what still has to be tested on a device
+
+The changes of the code reviews have been tested with real ftp, sftp and scp clients against the server code
+running on a desktop JVM. They have not been tested on an Android device yet.
 
 ## Translation
 You may help translate this app in [hosted weblate](https://hosted.weblate.org/projects/pftpd/pftpd/).
