@@ -21,8 +21,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.List;
 import java.util.Map;
@@ -118,18 +116,23 @@ public class AndroidPrefsUserManager implements UserManager {
 		if (authentication instanceof UsernamePasswordAuthentication) {
 			UsernamePasswordAuthentication auth = (UsernamePasswordAuthentication) authentication;
 
+			String remoteIp = getRemoteIp(auth.getUserMetadata());
+			if (LoginAttemptLimiter.isBlocked(remoteIp)) {
+				// too many wrong passwords from this address, do not even check
+				logger.warn("rejecting login of {}, too many failed logins", remoteIp);
+				throw new AuthenticationFailedException();
+			}
 			if (doesExist(auth.getUsername())) {
 				String pw = auth.getPassword();
 				if (!StringUtils.isBlank(pw)) {
-					String encryptedPW = EncryptionUtil.encrypt(pw);
 					String storedPW = prefsBean.getPassword();
-					if (storedPW != null && encryptedPW != null && MessageDigest.isEqual(
-							storedPW.getBytes(StandardCharsets.UTF_8),
-							encryptedPW.getBytes(StandardCharsets.UTF_8))) {
-						return buildUser(getRemoteIp(((UsernamePasswordAuthentication) authentication).getUserMetadata()));
+					if (EncryptionUtil.matches(pw, storedPW)) {
+						LoginAttemptLimiter.loginSucceeded(remoteIp);
+						return buildUser(remoteIp);
 					}
 				}
 			}
+			LoginAttemptLimiter.loginFailed(remoteIp);
 		} else if(authentication instanceof AnonymousAuthentication) {
 			if(prefsBean.isAnonymousLogin()) {
 				return anonymousUser(getRemoteIp(((AnonymousAuthentication) authentication).getUserMetadata()));
@@ -139,7 +142,9 @@ public class AndroidPrefsUserManager implements UserManager {
 	}
 
 	private String getRemoteIp(UserMetadata userMetadata) {
-		return userMetadata != null ? userMetadata.getInetAddress().getHostAddress() : null;
+		return userMetadata != null && userMetadata.getInetAddress() != null
+				? userMetadata.getInetAddress().getHostAddress()
+				: null;
 	}
 
 	@Override

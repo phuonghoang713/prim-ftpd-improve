@@ -36,6 +36,7 @@ public class ServerServiceHandler extends Handler
 	// root shell and wake lock are shared by ftp and sftp service, each of them has its own handler (thread)
 	private static final Object SHARED_STATE_LOCK = new Object();
 	private static Shell.Interactive shell;
+	private static Looper shellLooper;
 	private static int shellUsers = 0;
 	private static int wakeLockUsers = 0;
 	private static int serversRunning = 0;
@@ -69,6 +70,7 @@ public class ServerServiceHandler extends Handler
 			logger.warn("serviceRef is null ({})", logName);
 			if (toDo == AbstractServerService.MSG_STOP) {
 				stopHandled();
+				quitLooperIfUnused();
 			}
 			return;
 		}
@@ -81,7 +83,27 @@ public class ServerServiceHandler extends Handler
 				handleStop(service);
 			} finally {
 				stopHandled();
+				quitLooperIfUnused();
 			}
+		}
+	}
+
+	/**
+	 * Service of this handler is gone, its thread is not needed anymore.
+	 * Exception: callbacks of the shared root shell are delivered by the looper of the thread
+	 * which opened it. If the other server still uses that shell this thread has to stay.
+	 */
+	private void quitLooperIfUnused() {
+		synchronized (SHARED_STATE_LOCK) {
+			if (shell != null && shellLooper == getLooper()) {
+				logger.debug("root shell is bound to this thread and still in use, not ending thread ({})", logName);
+				return;
+			}
+		}
+		try {
+			getLooper().quitSafely();
+		} catch (Exception e) {
+			logger.debug("could not end thread ({}): {}", logName, e.toString());
 		}
 	}
 
@@ -293,6 +315,7 @@ public class ServerServiceHandler extends Handler
 					builder.useSU();
 				}
 				shell = builder.open();
+				shellLooper = Looper.myLooper();
 			} else {
 				logger.debug("root shell already open ({})", logName);
 			}
@@ -329,6 +352,7 @@ public class ServerServiceHandler extends Handler
 					logger.warn("error on closing shell", e);
 				}
 				shell = null;
+				shellLooper = null;
 			}
 		}
 	}

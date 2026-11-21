@@ -24,15 +24,17 @@
   password only.
 - File provider is not exported.
 
-## Open risks (not fixed)
+## Open risks
 
-| # | Risk | Why not fixed |
-|---|------|---------------|
-| O1 | Passwords are stored as SHA-512 with a static salt. | Needs a migration of stored passwords, should use a slow hash with random salt. |
-| O2 | `sshd-core` 0.14 is very old and has known protocol weaknesses (e.g. no strict key exchange, CBC ciphers, SHA-1 MACs remain enabled for compatibility). | Replacing the library is a project of its own. |
-| O3 | Tasker receivers are exported without permission. Any app can start and stop the server if the preference is enabled. | Known, covered by the security advisory referenced in the preference. Disabled by default. |
-| O4 | File provider of the file picker uses `root-path`, i.e. the whole file system. | Only used inside the app, would need changes of the vendored picker. |
+State after the pass over all open risks, see [risks.md](risks.md):
+
+| # | Risk | State |
+|---|------|-------|
+| O1 | Passwords were stored as SHA-512 with a static salt. | **Fixed** (R3-1): PBKDF2 with random salt, old hashes still accepted. |
+| O2 | `sshd-core` 0.14 is very old. | **Reduced** (R3-3): CBC ciphers and `hmac-sha1-96` are not offered anymore. Key exchange with SHA-1 and missing strict key exchange remain, replacing the library is a project of its own. |
+| O3 | Tasker receivers are exported without permission. | Open: opt-in by preference, now also required for the PowerToggles plugin (R2-S2). |
+| O4 | File provider of the file picker uses `root-path`. | Open: not exported, only used inside the app. |
 | O5 | FTP is not encrypted, anonymous login gives full access. | By design, user's choice. |
 | O6 | Public key authentication and anonymous SSH login accept any user name. | By design. |
-| O7 | No limit of failed logins for SSH besides the default of sshd. | Not analysed in depth. |
-| O8 | Service started without preferences stops itself without calling `startForeground()`. | Edge case, would need a notification for a server which does not run. |
+| O7 | No limit of failed logins for SSH. | **Fixed** (R3-2): limit per address for FTP and SFTP. |
+| O8 | Service started without preferences stopped itself without calling `startForeground()`. | **Fixed** (R3-8). |

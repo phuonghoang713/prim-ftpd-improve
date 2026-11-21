@@ -28,6 +28,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.BufferedInputStream;
 import java.io.Closeable;
+import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -197,6 +198,9 @@ public class DownloadsService extends Service {
         CloseableHttpResponse response = null;
         FileOutputStream fos = null;
         PowerManager.WakeLock wakeLock = null;
+        // file of a download which failed or was cancelled is incomplete, it must not stay around
+        File partialFile = null;
+        boolean complete = false;
         finished = false;
         try {
             // download must survive app going to background and device going to standby,
@@ -263,7 +267,8 @@ public class DownloadsService extends Service {
 
                 // open streams
                 InputStream inputStream = new BufferedInputStream(response.getEntity().getContent());
-                fos = new FileOutputStream(localPath);
+                partialFile = new File(localPath);
+                fos = new FileOutputStream(partialFile);
 
                 logger.info("downloading {} to file {}", urlStr, localPath);
 
@@ -277,6 +282,7 @@ public class DownloadsService extends Service {
                         logger.info("download finished");
                         fos.flush();
                         finished = true;
+                        complete = true;
                         break;
                     }
                     bytes += r;
@@ -329,6 +335,11 @@ public class DownloadsService extends Service {
             close(fos);
             close(response);
             close(httpclient);
+            if (partialFile != null && !complete) {
+                if (partialFile.delete()) {
+                    logger.info("deleted incomplete download {}", partialFile.getAbsolutePath());
+                }
+            }
             if (wakeLock != null) {
                 try {
                     if (wakeLock.isHeld()) {

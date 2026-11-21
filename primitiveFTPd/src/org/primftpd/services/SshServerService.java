@@ -8,6 +8,7 @@ import org.apache.ftpserver.ftplet.Authentication;
 import org.apache.ftpserver.ftplet.AuthenticationFailedException;
 import org.apache.ftpserver.usermanager.AnonymousAuthentication;
 import org.apache.ftpserver.usermanager.UsernamePasswordAuthentication;
+import org.apache.ftpserver.usermanager.impl.UserMetadata;
 import org.apache.ftpserver.util.IoUtils;
 import org.apache.sshd.SshServer;
 import org.apache.sshd.common.NamedFactory;
@@ -38,6 +39,7 @@ import org.primftpd.util.StringUtils;
 
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.net.SocketAddress;
 import java.security.KeyPair;
 import java.security.PrivateKey;
@@ -162,9 +164,19 @@ public class SshServerService extends AbstractServerService
 		{
 			final AndroidPrefsUserManager userManager = new AndroidPrefsUserManager(prefsBean);
 			sshServer.setPasswordAuthenticator((username, password, session) -> {
+			// address of client is needed to limit failed logins
+			UserMetadata userMetadata = new UserMetadata();
+			try {
+				SocketAddress remoteAddress = session.getIoSession().getRemoteAddress();
+				if (remoteAddress instanceof InetSocketAddress) {
+					userMetadata.setInetAddress(((InetSocketAddress) remoteAddress).getAddress());
+				}
+			} catch (Exception e) {
+				logger.debug("could not get address of client", e);
+			}
 			Authentication authentication = prefsBean.isAnonymousLogin()
 				? new AnonymousAuthentication()
-				: new UsernamePasswordAuthentication(username, password);
+				: new UsernamePasswordAuthentication(username, password, userMetadata);
 			logger.debug("auth type '{}' for user: {}", authentication.getClass().getName(), username);
 			try {
 				userManager.authenticate(authentication);
@@ -190,10 +202,7 @@ public class SshServerService extends AbstractServerService
 			if (!pubKeys.isEmpty()) {
 				sshServer.setPublickeyAuthenticator(new PubKeyAuthenticator(pubKeys));
 			} else {
-				Toast.makeText(
-					getApplicationContext(),
-					getText(R.string.couldNotReadKeyAuthKey),
-					Toast.LENGTH_SHORT).show();
+				showToast(getText(R.string.couldNotReadKeyAuthKey), Toast.LENGTH_SHORT);
 			}
 		}
 
@@ -262,6 +271,9 @@ public class SshServerService extends AbstractServerService
 		sigFactories.addAll(origSigFactories);
 		sigFactories.add(new SignatureEd25519.Factory());
 		sshServer.setSignatureFactories(sigFactories);
+
+		// an (authenticated) client must not be able to open handles without limit
+		sshServer.getProperties().put(SftpSubsystem.MAX_OPEN_HANDLES_PER_SESSION, "1000");
 
 		// idle timeout
 		// sec -> ms
@@ -345,8 +357,15 @@ public class SshServerService extends AbstractServerService
 	private static final Set<String> WEAK_ALGORITHMS = new HashSet<>(Arrays.asList(
 			"arcfour128",
 			"arcfour256",
+			// CBC mode of ssh allows recovery of plaintext, all usual clients support CTR
+			"aes128-cbc",
+			"aes192-cbc",
+			"aes256-cbc",
+			"3des-cbc",
+			"blowfish-cbc",
 			"hmac-md5",
 			"hmac-md5-96",
+			"hmac-sha1-96",
 			"diffie-hellman-group1-sha1"));
 
 	private <T> List<NamedFactory<T>> withoutWeakAlgorithms(List<NamedFactory<T>> factories) {

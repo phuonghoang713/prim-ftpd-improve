@@ -16,6 +16,7 @@ public class TargetDir {
     private File targetPath;
     private Uri targetSafUrl;
     private Context context;
+    private final java.util.Map<String, DocumentFile> createdSafFiles = new java.util.concurrent.ConcurrentHashMap<>();
 
     public TargetDir(File targetPath) {
         this.targetPath = targetPath;
@@ -48,6 +49,28 @@ public class TargetDir {
         return null;
     }
 
+    /**
+     * Deletes a file which has been created by {@link #createOutStream(String)}, e.g. as it could not
+     * be written completely.
+     */
+    void deleteFile(String filename) {
+        try {
+            if (targetPath != null) {
+                File file = new File(targetPath, filename);
+                if (file.isFile()) {
+                    file.delete();
+                }
+            } else {
+                DocumentFile file = createdSafFiles.remove(filename);
+                if (file != null) {
+                    file.delete();
+                }
+            }
+        } catch (Exception e) {
+            // nothing more we could do
+        }
+    }
+
     private boolean doesFilenameExistFs(String filename) {
         return new File(targetPath, filename).exists();
     }
@@ -76,6 +99,7 @@ public class TargetDir {
         if (file == null) {
             throw new IOException("could not create file: " + filename);
         }
+        createdSafFiles.put(filename, file);
         ContentResolver contentResolver = context.getContentResolver();
         OutputStream os = contentResolver.openOutputStream(file.getUri());
         if (os == null) {

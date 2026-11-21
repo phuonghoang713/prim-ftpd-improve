@@ -80,7 +80,12 @@ Read without findings: `HostKeyAlgorithm`, `KeyFingerprintProvider`,
 `PubKeyAuthKeysFragment`, `AboutFragment`, `Leanback*`,
 `ReceiveQuickShareActivity`, preference widgets.
 
-## Open points (not changed)
+## Open points
+
+These were open when the second review ended. Most of them were fixed in the
+pass over all risks afterwards, see [risks.md](risks.md): R2-O1 (R3-9),
+R2-O3 (R3-4), R2-O4 (R3-5), R2-O5 (R3-6), R2-O6 (R3-7). Still open: R2-O2,
+R2-O7, R2-O8, R2-O9.
 
 | # | Point | Why not changed |
 |---|-------|-----------------|

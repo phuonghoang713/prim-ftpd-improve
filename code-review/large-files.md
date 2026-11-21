@@ -53,7 +53,7 @@ State after the second review ([round-2.md](round-2.md)):
   offset as `dd` output is a pipe.
 - Root copy mode and quick share copy complete files, twice the space is
   needed temporarily.
-- SFTP writes in random order are only supported by plain storage. A write
-  at offset 0 truncates the file (R2-O3).
+- SFTP writes in random order are only supported by plain storage (writes at
+  offset 0 do not truncate anymore there, R3-4).
 - Passive data connections are awaited for the idle time, 2 minutes if none
   is configured (R2-L7, was: without limit).

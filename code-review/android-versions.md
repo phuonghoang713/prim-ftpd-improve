@@ -51,7 +51,7 @@ can not be started). Two cosmetic points are open.
 
 | # | Point | Effect |
 |---|-------|--------|
-| A-O1 | `TaskerEditActionActivity` and `TaskerEditConditionActivity` do not apply window insets. | On Android 15+ the first list entry may be drawn below the status bar. Only visible when configuring the Tasker plugin. |
+| A-O1 | `TaskerEditActionActivity` and `TaskerEditConditionActivity` did not apply window insets. | Fixed afterwards (R3-11 in [risks.md](risks.md)), not checked on a device. |
 | A-O2 | Start by Tasker while the app is in the background (Android 12+). | Android may refuse to start the service. Works if the app is excluded from battery optimisation. |
 | A-O3 | Orientation lock during copy of shared files is ignored on large screens (Android 16). | Progress dialog can disappear on rotation. |
 

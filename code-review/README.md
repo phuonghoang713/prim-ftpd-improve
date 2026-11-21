@@ -7,6 +7,7 @@ Reviews of the app code of primitive ftpd on branch
 |--------|------|--------|
 | First | 2026-11-21 | 22 problems with large files, 44 bugs, 9 security issues fixed. Commits `3554ec2`, `ec9f15d`. |
 | Second | 2026-11-21 | Re-check with real clients and 5 GiB files, use without root, Android 10+. 7 transfer problems, 20 bugs, 2 security issues fixed. |
+| Open risks | 2026-11-21 | Every risk still listed as open: 12 fixed (password storage, login limit, SSH ciphers, deletes, ...), 11 stay open with reasons. |
 
 | File | Content |
 |------|---------|
@@ -14,6 +15,7 @@ Reviews of the app code of primitive ftpd on branch
 | [bugs.md](bugs.md) | First review: functional bugs, crashes, thread-safety, resource leaks |
 | [security.md](security.md) | First review: security risks, hardening, behaviour changes, open risks |
 | [round-2.md](round-2.md) | Second review: all findings, open points, coverage |
+| [risks.md](risks.md) | Every open risk: fixed or not, and why |
 | [non-root.md](non-root.md) | Does the app work without root? |
 | [android-versions.md](android-versions.md) | Does the app work on Android 10 and higher? |
 | [verification.md](verification.md) | What has been verified and what has not, for both reviews |

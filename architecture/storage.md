@@ -75,7 +75,7 @@ Common helpers: `Utils` (path handling, `skipFully()` / `openAtOffset()`),
 | **Plain** (default) | `java.io.File` | "All files access" on Android 11+, storage permission up to Android 10. **No root.** | yes | Fastest and most complete. Start directory is a preference. Use SAF if an SD card can not be written this way. |
 | **SAF** | `DocumentFile` / `DocumentsContract` on a directory tree the user picked | Tree permission granted in the system picker. **No root.** | yes | For external SD cards. Slower. Move only within a directory. |
 | **Read-only SAF** | `DocumentsContract` queries only | as SAF | no | Much faster listings than SAF. |
-| **Root** | Commands in a root shell: `ls -la` to list, `dd` to read and write (or copy to a tmp dir first), `mv`, `rm -rf`, `mkdir`, `touch` | **Rooted device** | yes | Reaches everything. Without root nothing can be accessed, the server refuses to start with this type. |
+| **Root** | Commands in a root shell: `ls -la` to list, `dd` to read and write (or copy to a tmp dir first), `mv`, `rm -f` / `rmdir`, `mkdir`, `touch` | **Rooted device** | yes | Reaches everything. Without root nothing can be accessed, the server refuses to start with this type. |
 | **Virtual** | Combines the four above under `/fs`, `/superuser`, `/saf`, `/rosaf` | what the used branch needs | per branch | `/superuser` is empty on devices without root, the other branches work. |
 | **Quick share** | Temporary directory with the shared files | nothing | no | Not selectable, active when the server was started by sharing files. |
 
@@ -90,7 +90,7 @@ OutputStream createOutputStream(long offset)
 
 | Type | Read at offset | Write at offset 0 | Write at end (append / resume) | Write elsewhere |
 |------|----------------|-------------------|--------------------------------|-----------------|
-| Plain | seek (`FileInputStream.skip`) | truncates | `FileOutputStream` in append mode | `RandomAccessFile` |
+| Plain | seek (`FileInputStream.skip`) | FTP: truncates. SFTP / SCP: writes in place, truncation only when the protocol asks for it | `FileOutputStream` in append mode | `RandomAccessFile` |
 | SAF | seek on the file descriptor of the provider | mode `wt` (truncate) | mode `wa` | error |
 | Read-only SAF | seek | not writable | not writable | not writable |
 | Root, `dd` | reads and discards up to offset (pipe) | `dd of=` | error | error |
@@ -103,10 +103,11 @@ Consequences:
   SAF.
 * An SFTP client which writes blocks out of order works with plain storage
   only.
-* Writing at offset 0 truncates. This is what FTP `STOR` and SCP need, but an
-  SFTP client which overwrites the first bytes of an existing file without
-  the truncate flag loses the rest of the file (see known limitations in
-  `code-review/large-files.md`).
+* FTP `STOR` at offset 0 replaces the file. For SFTP and SCP the plain
+  storage never truncates implicitly (`FsSshFile.createOutputStream()`): the
+  server calls `truncate()` when the client opens a file with the truncate
+  flag, and SCP truncates before it writes. SAF can not write in place, it
+  truncates at offset 0 for both protocols.
 
 ## Paths
 

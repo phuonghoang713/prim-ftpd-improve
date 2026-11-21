@@ -203,6 +203,15 @@ public abstract class SafFile<TMina, TFileSystemView extends SafFileSystemView> 
         logger.trace("[{}] delete()", name);
         if (isWritable() && documentFile != null) {
             postClientAction(ClientActionEvent.ClientAction.DELETE);
+            // provider deletes directories including their content, a delete of a directory
+            // (ftp RMD) must only succeed if it is empty, like for the other kinds of storage
+            if (documentFile.isDirectory()) {
+                DocumentFile[] children = documentFile.listFiles();
+                if (children != null && children.length > 0) {
+                    logger.info("not deleting directory which is not empty: {}", absPath);
+                    return false;
+                }
+            }
             boolean success = documentFile.delete();
             if (success) {
                 documentFile = null;

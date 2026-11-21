@@ -66,11 +66,21 @@ Other apps can start and stop the server through the tasker and powertoggles plu
 Both only work if you enable 'tasker' in the preferences, which is disabled by default.
 Please read the security advisory linked there before enabling it: any app on your device can then control the server.
 
+## Security notes
+
+* The password is stored as salted PBKDF2 hash. Passwords set with older versions keep working.
+* After 10 wrong passwords from one address, logins from that address are refused for one minute (ftp and sftp).
+* The sftp server only offers CTR ciphers, very old clients which need CBC can not connect.
+* ftp is not encrypted, use sftp in networks you do not trust. Keep anonymous login disabled.
+* Every risk which was found, fixed or left open is listed in [code-review/risks.md](code-review/risks.md).
+
 ## If the server does not start
 
 * A message tells you why (e.g. port in use, storage type "Super user" without root). The other server keeps running.
 * sftp needs a host key. Generate it in the app before starting the server by widget, tile or on boot.
 * Changed preferences are used the next time the server is started.
+* If Android stops the app in the background the server is gone and widget and tile show that.
+  Exclude the app from battery optimisation to avoid it.
 
 ## Large files
 

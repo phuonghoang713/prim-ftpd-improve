@@ -6,6 +6,7 @@ import org.apache.sshd.common.file.SshFile;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.channels.FileChannel;
 import java.util.List;
 
@@ -36,6 +37,13 @@ public class FsSshFile extends FsFile<SshFile, FsSshFileSystemView> implements S
 	public String getOwner() {
 		logger.trace("[{}] getOwner()", name);
 		return session.getUsername();
+	}
+
+	@Override
+	public OutputStream createOutputStream(long offset) throws IOException {
+		// Sftp writes are positional: a client may overwrite the beginning of a file and expects the rest
+		// to stay. If content is to be dropped the server calls truncate() (open flag of sftp, scp).
+		return createOutputStream(offset, false);
 	}
 
 	@Override

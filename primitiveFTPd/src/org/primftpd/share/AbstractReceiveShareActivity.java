@@ -203,19 +203,21 @@ public abstract class AbstractReceiveShareActivity extends FragmentActivity {
             return false;
         }
         boolean success = false;
+        String filename = null;
         OutputStream os = null;
         InputStream is = null;
         try {
-            String filename = FilenameUnique.filename(uri, content, type, targetDir, this);
+            filename = FilenameUnique.filename(uri, content, type, targetDir, this);
             logger.debug("saving with filename: {}", filename);
             os = targetDir.createOutStream(filename);
             is = getContentResolver().openInputStream(uri);
             if (os == null || is == null) {
+                // no return here, file which has been created must be removed below
                 logger.warn("could not open streams to copy shared data, uri: {}", uri);
-                return false;
+            } else {
+                copyStream(is, os);
+                success = true;
             }
-            copyStream(is, os);
-            success = true;
 
         } catch (Exception e) {
             logger.warn("could not copy shared data", e);
@@ -232,6 +234,10 @@ public abstract class AbstractReceiveShareActivity extends FragmentActivity {
             } catch (IOException e) {
                 logger.warn("could not copy shared data", e);
             }
+        }
+        if (!success && filename != null) {
+            // do not leave a truncated file, name is unique so file has been created by this copy
+            targetDir.deleteFile(filename);
         }
         return success;
     }

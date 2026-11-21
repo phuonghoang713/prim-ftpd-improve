@@ -44,6 +44,10 @@ Rules which are easy to get wrong:
   which stops (or fails to start) must not take them away from the other one.
 * `PrefsBean` is copied into the service at start. A running server never
   sees changed preferences.
+* If Android kills the process and restarts a service without its start
+  intent, the service stops itself: without `PrefsBean` there is nothing to
+  run, and a service without server would be shown as running.
+* The `HandlerThread` of a service ends when the stop has been handled.
 
 ## Threads
 

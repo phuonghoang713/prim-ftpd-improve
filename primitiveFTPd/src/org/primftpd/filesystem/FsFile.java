@@ -224,6 +224,15 @@ public abstract class FsFile<TMina, TFileSystemView extends FsFileSystemView>
 	}
 
 	public OutputStream createOutputStream(long offset) throws IOException {
+		return createOutputStream(offset, true);
+	}
+
+	/**
+	 * @param truncateAtStart If true existing content is dropped when writing starts at offset 0 (ftp STOR).
+	 *                        If false content behind the written data is kept (positional writes of sftp,
+	 *                        truncation is requested separately there).
+	 */
+	protected OutputStream createOutputStream(long offset, boolean truncateAtStart) throws IOException {
 		logger.trace("[{}] createOutputStream(offset: {}), file: {}",
 				new Object []{
 						name,
@@ -242,7 +251,7 @@ public abstract class FsFile<TMina, TFileSystemView extends FsFileSystemView>
 
 		// now create out stream
 		OutputStream os;
-		if (offset == 0) {
+		if (offset == 0 && truncateAtStart) {
 			os = new FileOutputStream(file);
 		} else if (offset == this.file.length()) {
 			os = new FileOutputStream(file, true);

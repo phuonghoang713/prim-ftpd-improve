@@ -30,6 +30,7 @@ import org.primftpd.prefs.PrefsBean;
 import org.primftpd.R;
 import org.primftpd.share.QuickShareBean;
 import org.primftpd.util.KeyFingerprintProvider;
+import org.primftpd.util.NotificationUtil;
 import org.primftpd.util.ServicesStartStopUtil;
 import org.primftpd.util.WakelockUtil;
 import org.slf4j.Logger;
@@ -125,9 +126,21 @@ public abstract class AbstractServerService
 	{
 		logger.error("could not start server", e);
 
-		String msg = getText(R.string.serverCouldNotBeStarted).toString();
-		msg += e.getLocalizedMessage();
-		Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_LONG).show();
+		final String msg = getText(R.string.serverCouldNotBeStarted).toString() + e.getLocalizedMessage();
+		// show on main thread: thread which starts the server ends when the start has failed
+		// and would take the toast with it on older android versions
+		showToast(msg, Toast.LENGTH_LONG);
+	}
+
+	protected void showToast(final CharSequence msg, final int duration)
+	{
+		new Handler(Looper.getMainLooper()).post(() -> {
+			try {
+				Toast.makeText(getApplicationContext(), msg, duration).show();
+			} catch (Exception e) {
+				logger.warn("could not show toast: {}", e.toString());
+			}
+		});
 	}
 
 	@Override
@@ -154,9 +167,12 @@ public abstract class AbstractServerService
 		logger.debug("onStartCommand()");
 
 		if (intent == null) {
-			logger.warn("intent is null in onStartCommand()");
-
-			return START_REDELIVER_INTENT;
+			// Restarted by android after the process had been killed. Preferences (and quick share mode)
+			// come with the start intent, there is nothing to run a server with. A service which stays
+			// around without server makes widget, tile and UI show a running server.
+			logger.warn("intent is null in onStartCommand(), stopping service");
+			stopSelf();
+			return START_NOT_STICKY;
 		}
 
 		// get parameters
@@ -165,6 +181,15 @@ public abstract class AbstractServerService
 			logger.warn("no prefs in intent in onStartCommand()");
 			if (prefsBean == null) {
 				// nothing we could run with
+				// service may have been started by startForegroundService(), see ServerServiceHandler
+				try {
+					startForeground(
+							NotificationUtil.NOTIFICATION_ID,
+							NotificationUtil.buildServerNotStartedNotification(this));
+					stopForeground(STOP_FOREGROUND_REMOVE);
+				} catch (Exception e) {
+					logger.warn("could not fulfill foreground contract: {}", e.toString());
+				}
 				stopSelf();
 				return START_NOT_STICKY;
 			}

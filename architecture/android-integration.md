@@ -71,12 +71,15 @@ Recommended setup without root:
 
 | Protocol | Mechanisms |
 |----------|------------|
-| FTP | User name and password of the preferences (`AndroidPrefsUserManager`), optional anonymous login. At most 5 failed logins per connection with a delay. |
+| FTP | User name and password of the preferences (`AndroidPrefsUserManager`), optional anonymous login. At most 5 failed logins per connection with a delay, plus the limit per address. |
 | SFTP | Password (same user manager), public key (`PubKeyAuthenticator`, keys from `authorized_keys` in the app's external files dir, user name is ignored), optional anonymous login. |
 
-The password is stored as salted SHA-512 hash in the preferences
-(`EncryptionUtil`, `EncryptingEditTextPreference`). Connections can be
-limited to an IP pattern (`RemoteIpChecker`).
+The password is stored as PBKDF2 hash (HMAC-SHA256, random salt) in the
+preferences (`EncryptionUtil`, `EncryptingEditTextPreference`), hashes of the
+older format (salted SHA-512) are still accepted. Failed logins are limited
+per client address for both protocols (`LoginAttemptLimiter`: 10 failures
+block the address for a minute). Connections can be limited to an IP pattern
+(`RemoteIpChecker`).
 
 ## Data the app keeps
 

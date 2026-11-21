@@ -8,7 +8,8 @@ found; the files in this folder describe *what was changed*.
 |------|---------|
 | [round-1.md](round-1.md) | Improvements of the first review (commits `3554ec2`, `ec9f15d`) |
 | [round-2.md](round-2.md) | Improvements of the second review |
+| [round-3.md](round-3.md) | Improvements of the pass over all open risks |
 
 Each entry names the area, what was improved, the files that were touched and
 the id of the finding in the parent folder (`L` = large files, `B` = bugs,
-`S` = security, `R2-` = second review).
+`S` = security, `R2-` = second review, `R3-` = pass over open risks).

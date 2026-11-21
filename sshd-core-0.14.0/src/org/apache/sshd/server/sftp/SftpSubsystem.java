@@ -641,6 +641,9 @@ public class SftpSubsystem implements Command, Runnable, SessionAware, FileSyste
                     Handle p = handles.get(handle);
                     if (!(p instanceof FileHandle)) {
                         sendStatus(id, SSH_FX_FAILURE, handle);
+                    } else if (len < 0) {
+                        // would end the subsystem with NegativeArraySizeException
+                        sendStatus(id, SSH_FX_FAILURE, "invalid length");
                     } else {
                         FileHandle fh = (FileHandle) p;
                         byte[] b = new byte[Math.min(len, Buffer.MAX_LEN)];

@@ -137,7 +137,9 @@ public abstract class RootFile<TMina, TFileSystemView extends RootFileSystemView
     public boolean delete() {
         logger.trace("[{}] delete()", name);
         postClientAction(ClientActionEvent.ClientAction.DELETE);
-        boolean success = runCommand("rm -rf " + escapePath(absPath));
+        // no recursive delete: clients delete content first, a delete of a directory which is not empty has to fail
+        String cmd = bean.isDir() && !bean.isLink() ? "rmdir " : "rm -f ";
+        boolean success = runCommand(cmd + escapePath(absPath));
         if (success) {
             getMediaScannerClient().scanFile(absPath);
         }

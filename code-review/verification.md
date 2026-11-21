@@ -145,3 +145,28 @@ In addition to the list of the first review:
 7. Quick share of a file while the servers are running: servers must come up
    again in quick share mode.
 8. Start and stop several times in a row from widget and tile.
+
+---
+
+# Pass over open risks
+
+Same environment and harness as for the second review.
+
+| Test | Result |
+|------|--------|
+| PBKDF2: three published test vectors for HMAC-SHA256 | pass |
+| Password check: new format, old format, wrong password, password with umlauts, malformed stored value | pass |
+| FTP and SFTP login with a password stored in the new format | pass |
+| Login limiter (unit): block after 10 failures, other address not affected, block ends after 60 s, success clears, 5000 addresses | pass |
+| 10 wrong FTP logins, then right password by FTP and by SFTP | both refused, as intended |
+| SSH algorithms offered (read with `ssh -vv`) | ciphers `aes128-ctr,aes192-ctr,aes256-ctr`, MACs `hmac-sha2-256,hmac-sha2-512,hmac-sha1`; connection with `aes128-cbc` refused |
+| Plain storage, SFTP flavour: write at offset 0 keeps the rest, write in the middle, append, truncate, write to empty and to new file | pass |
+| Plain storage, FTP flavour: write at offset 0 replaces the file | pass |
+| Overwrite a 200 MB file by a 1 MB file with FTP, SFTP and legacy SCP | pass, target has the size of the new file |
+| Upload / download 200 MB by FTP, SFTP, SCP, resume of an SFTP upload | pass |
+| Passive connection tests of the second review | pass |
+| Unit tests, type check | 13 of 13 pass, no errors |
+
+Not tested (Android or root only): R3-5 to R3-9, R3-11, R3-12. The speed of
+the password hash was measured on a desktop only (about 0.1 s), a phone
+will need several times as long per login.
