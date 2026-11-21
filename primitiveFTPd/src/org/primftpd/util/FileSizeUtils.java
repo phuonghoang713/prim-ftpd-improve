@@ -9,7 +9,7 @@ public class FileSizeUtils {
     }
     public static String humanReadableByteCountSI(long bytes, String suffix) {
         if (bytes < 1000) {
-            return bytes + " B";
+            return bytes + " B" + suffix;
         }
         CharacterIterator ci = new StringCharacterIterator("kMGTPE");
         while (bytes >= 999_950) {

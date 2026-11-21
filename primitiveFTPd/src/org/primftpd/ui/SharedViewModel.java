@@ -136,8 +136,10 @@ public class SharedViewModel
         try {
             try (FileReader filereader = new FileReader(path)) {
                 BufferedReader reader = new BufferedReader(filereader);
-                while (reader.ready()) {
-                    String line = reader.readLine();
+                // note: ready() must not be used to detect end of file
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    line = line.trim();
                     if (!line.startsWith("#") && !line.isEmpty()) {
                         keys.add(line);
                     }
@@ -178,7 +180,7 @@ public class SharedViewModel
             try {
                 try (FileWriter writer = new FileWriter(path, true)) {
                     writer.append("\n");
-                    writer.append(key);
+                    writer.append(key.toString().trim());
                 }
 
                 List<String> keys = loadKeysForDisplay(context, logger);

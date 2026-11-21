@@ -49,7 +49,9 @@ public final class LogController {
         String loggingStr = prefs.getString(
                 LoadPrefsUtil.PREF_KEY_LOGGING,
                 Logging.NONE.xmlValue());
-        return Logging.byXmlVal(loggingStr);
+        Logging logging = Logging.byXmlVal(loggingStr);
+        // unknown value must not lead to null, app would crash on every start
+        return logging != null ? logging : Logging.NONE;
     }
 
     @NonNull

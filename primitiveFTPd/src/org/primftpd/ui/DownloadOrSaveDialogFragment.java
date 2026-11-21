@@ -25,12 +25,16 @@ public class DownloadOrSaveDialogFragment extends DialogFragment {
     @Override
     public void setArguments(Bundle args) {
         super.setArguments(args);
-        url = args.getString(KEY_URL);
+        url = args != null ? args.getString(KEY_URL) : null;
     }
 
     @Override
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         logger.debug("showing download or save dialog");
+        // fragment may have been re-created by the system, then setArguments() has not been called
+        if (url == null && getArguments() != null) {
+            url = getArguments().getString(KEY_URL);
+        }
         final FragmentActivity activity = getActivity();
         AlertDialog.Builder builder = new AlertDialog.Builder(activity);
         builder.setMessage(R.string.downloadOrSaveUrlToFile);

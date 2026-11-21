@@ -43,13 +43,17 @@ public class GenKeysAskDialogFragment extends DialogFragment {
     @Override
     public void setArguments(Bundle args) {
         super.setArguments(args);
-        startServerOnFinish = args.getBoolean(KEY_START_SERVER);
+        startServerOnFinish = args != null && args.getBoolean(KEY_START_SERVER);
     }
 
     @Override
     @NonNull
     public Dialog onCreateDialog(Bundle savedInstanceState) {
         logger.debug("showing gen key dialog");
+        // fragment may have been re-created by the system, then setArguments() has not been called
+        if (getArguments() != null) {
+            startServerOnFinish = getArguments().getBoolean(KEY_START_SERVER);
+        }
         AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
         builder.setMessage(R.string.generateKeysMessage);
         builder.setPositiveButton(R.string.generate, (dialog, id) ->

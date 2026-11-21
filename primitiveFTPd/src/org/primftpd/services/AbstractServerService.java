@@ -217,6 +217,7 @@ public abstract class AbstractServerService
 		logger.debug("onDestroy()");
 
 		// send stop message (to handler)
+		serviceHandler.stopRequested();
 		Message msg = serviceHandler.obtainMessage();
 		msg.arg1 = MSG_STOP;
 		serviceHandler.sendMessage(msg);

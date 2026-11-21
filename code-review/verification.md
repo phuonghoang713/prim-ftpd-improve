@@ -110,12 +110,18 @@ All tests ran against the final code of this review.
 | Type check of all sources (`javac` against dependency jars) | no errors |
 | Normalisation of virtual paths (7 cases) | pass |
 
+After the third pass (remaining files) the type check, the unit tests, the
+two passive connection tests and transfers of 300 MB by FTP, SFTP (incl.
+modification time) and legacy SCP were run again: all pass.
+
 ## What these tests do not cover
 
 * Everything Android specific: services and their life cycle (R2-B1, R2-B2,
-  R2-B3, R2-B8, R2-B10), wake lock (R2-B7), download service (R2-B6), copy of
-  shared files (R2-L5), permissions, notifications. These fixes are
-  **checked by compiler and by reading only**.
+  R2-B3, R2-B8, R2-B10, R2-B14, R2-B19), wake lock (R2-B7), download service
+  (R2-B6, R2-B18), copy of shared files (R2-L5), share intents, dialogs,
+  preferences and remote control (R2-S2, R2-B12, R2-B13, R2-B15 to R2-B17),
+  permissions, notifications. These fixes are **checked by compiler and by
+  reading only**.
 * Storage types SAF, read-only SAF, root, virtual and quick share. Root
   fixes (R2-L3, R2-L4) are not tested, there is no rooted device.
 * Android's I/O stack, flash storage, WiFi. Transfer rates above say nothing
@@ -136,3 +142,6 @@ In addition to the list of the first review:
    failed.
 6. Virtual folders with FileZilla: enter `/fs`, go up, the four storage
    types must be listed again.
+7. Quick share of a file while the servers are running: servers must come up
+   again in quick share mode.
+8. Start and stop several times in a row from widget and tile.

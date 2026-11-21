@@ -6,7 +6,7 @@ Reviews of the app code of primitive ftpd on branch
 | Review | Date | Result |
 |--------|------|--------|
 | First | 2026-11-21 | 22 problems with large files, 44 bugs, 9 security issues fixed. Commits `3554ec2`, `ec9f15d`. |
-| Second | 2026-11-21 | Re-check with real clients and 5 GiB files, use without root, Android 10+. 7 transfer problems, 11 bugs, 1 security issue fixed. |
+| Second | 2026-11-21 | Re-check with real clients and 5 GiB files, use without root, Android 10+. 7 transfer problems, 20 bugs, 2 security issues fixed. |
 
 | File | Content |
 |------|---------|

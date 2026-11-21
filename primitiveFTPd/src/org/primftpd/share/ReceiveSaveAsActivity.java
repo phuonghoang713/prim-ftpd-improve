@@ -8,6 +8,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.core.graphics.Insets;
@@ -84,8 +85,31 @@ public class ReceiveSaveAsActivity extends AbstractReceiveShareActivity {
                 contents = Collections.singletonList(content);
             }
         } else if (Intent.ACTION_SEND_MULTIPLE.equals(action) && type != null) {
-            uris = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
-            contents = intent.getStringArrayListExtra(Intent.EXTRA_TEXT);
+            // intent is sent by another app: list may contain null or objects of other types
+            List<?> streams = intent.getParcelableArrayListExtra(Intent.EXTRA_STREAM);
+            if (streams != null) {
+                List<Uri> validUris = new ArrayList<>(streams.size());
+                for (Object stream : streams) {
+                    if (stream instanceof Uri) {
+                        validUris.add((Uri) stream);
+                    }
+                }
+                if (!validUris.isEmpty()) {
+                    uris = validUris;
+                }
+            }
+            List<String> texts = intent.getStringArrayListExtra(Intent.EXTRA_TEXT);
+            if (texts != null) {
+                List<String> validTexts = new ArrayList<>(texts.size());
+                for (Object text : texts) {
+                    if (text instanceof String) {
+                        validTexts.add((String) text);
+                    }
+                }
+                if (!validTexts.isEmpty()) {
+                    contents = validTexts;
+                }
+            }
         }
 
         logger.debug("got uris: '{}', contents: '{}'", uris, contents);
@@ -198,8 +222,13 @@ public class ReceiveSaveAsActivity extends AbstractReceiveShareActivity {
                 os = targetDir.createOutStream(filename);
                 PrintStream ps = new PrintStream(os);
                 ps.println(content);
+                // PrintStream does not throw
+                if (ps.checkError()) {
+                    throw new IOException("could not write text to file " + filename);
+                }
             } catch (Exception e) {
                 logger.warn("could not copy shared data", e);
+                Toast.makeText(this, "could not save text: " + e.getMessage(), Toast.LENGTH_LONG).show();
             } finally {
                 try {
                     if (os != null) os.close();

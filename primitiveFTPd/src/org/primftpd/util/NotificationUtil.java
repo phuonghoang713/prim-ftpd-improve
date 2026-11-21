@@ -148,6 +148,18 @@ public class NotificationUtil {
         builder.addAction(stopAction);
     }
 
+    /**
+     * Minimal notification for a service which has to call startForeground() although its server
+     * could not be started. Must not depend on anything which might fail.
+     */
+    public static Notification buildServerNotStartedNotification(Context ctxt) {
+        createChannel(ctxt, NOTIFICATION_CHANNEL_ID);
+        return new Notification.Builder(ctxt, NOTIFICATION_CHANNEL_ID)
+                .setContentTitle(ctxt.getText(R.string.notificationTitle))
+                .setSmallIcon(R.drawable.ic_notification)
+                .build();
+    }
+
     public static void createStartStopNotification(Context ctxt) {
         LOGGER.debug("createStartStopNotification()");
 

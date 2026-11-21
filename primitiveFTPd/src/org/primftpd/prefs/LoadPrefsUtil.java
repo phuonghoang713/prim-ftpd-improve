@@ -58,6 +58,8 @@ public class LoadPrefsUtil
 	public static final int PORT_PASSIVE_DEFAULT_VAL = 5678;
 	static final String PORT_PASSIVE_DEFAULT_VAL_STR = String.valueOf(PORT_PASSIVE_DEFAULT_VAL);
 	public static final int IDLE_TIMEOUT_DEFAULT_VAL = 0;
+	// seconds, must fit into int when converted to milliseconds
+	public static final int IDLE_TIMEOUT_MAX_VAL = 2_000_000;
 	static final String IDLE_TIMEOUT_DEFAULT_VAL_STR = String.valueOf(IDLE_TIMEOUT_DEFAULT_VAL);
 	public static final String IDLE_TIMEOUT_SERVER_STOP_DEFAULT_VAL = "30";
 	public static final Set<String> HOSTKEY_ALGOS_DEFAULTS = Collections.unmodifiableSet(
@@ -167,7 +169,9 @@ public class LoadPrefsUtil
 		String whichServerStr = prefs.getString(
 			LoadPrefsUtil.PREF_KEY_WHICH_SERVER,
 			ServerToStart.ALL.xmlValue());
-		return ServerToStart.byXmlVal(whichServerStr);
+		ServerToStart serverToStart = ServerToStart.byXmlVal(whichServerStr);
+		// unknown value (e.g. written by another version of the app) must not lead to null
+		return serverToStart != null ? serverToStart : ServerToStart.ALL;
 	}
 
 	public static void storeLogging(SharedPreferences prefs, Logging value) {
@@ -196,10 +200,16 @@ public class LoadPrefsUtil
 		Integer val = IDLE_TIMEOUT_DEFAULT_VAL;
 		if (str != null && str.length() > 0) {
 			try {
-				val = Integer.valueOf(str);
+				val = Integer.valueOf(str.trim());
 			} catch (NumberFormatException e) {
 				// never mind
 			}
+		}
+		// servers multiply by 1000 and reject negative values
+		if (val < 0) {
+			val = IDLE_TIMEOUT_DEFAULT_VAL;
+		} else if (val > IDLE_TIMEOUT_MAX_VAL) {
+			val = IDLE_TIMEOUT_MAX_VAL;
 		}
 		return val;
 	}
@@ -208,7 +218,9 @@ public class LoadPrefsUtil
 		String storageTypeStr = prefs.getString(
 				PREF_KEY_STORAGE_TYPE,
 				StorageType.PLAIN.xmlValue());
-		return StorageType.byXmlVal(storageTypeStr);
+		StorageType storageType = StorageType.byXmlVal(storageTypeStr);
+		// unknown value (e.g. written by another version of the app) must not lead to null
+		return storageType != null ? storageType : StorageType.PLAIN;
 	}
 
 	public static void storeStorageType(SharedPreferences prefs, StorageType value) {

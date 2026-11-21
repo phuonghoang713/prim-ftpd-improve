@@ -85,11 +85,10 @@ public class DownloadsService extends Service {
             if (msg.what == MSG_START) {
                 String urlStr = msg.getData() != null ? msg.getData().getString(URL) : null;
                 service.download(urlStr, 0);
-                if (!hasMessages(MSG_START)) {
-                    // nothing left to do: a started service which is never stopped
-                    // stays around (incl. its thread) until the system kills the process
-                    service.stopSelf();
-                }
+                // Nothing left to do: a started service which is never stopped stays around (incl. its thread)
+                // until the system kills the process. Start id makes sure a download requested
+                // in the meantime is not cut off.
+                service.stopSelf(msg.arg1);
 
             } else if (msg.what == MSG_STOP) {
                 // -> seems not to be delivered
@@ -132,6 +131,7 @@ public class DownloadsService extends Service {
         if (ACTION_START.equals(action)) {
             logger.debug("  action start");
             msg = Message.obtain(serviceHandler, MSG_START);
+            msg.arg1 = startId;
             msg.setData(intent.getExtras());
 
             // build local path

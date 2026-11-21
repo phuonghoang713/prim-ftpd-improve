@@ -9,7 +9,6 @@ import android.os.PowerManager.WakeLock;
 
 import org.primftpd.filesystem.Utils;
 import org.primftpd.prefs.StorageType;
-import org.primftpd.util.KeyFingerprintProvider;
 import org.primftpd.util.NotificationUtil;
 import org.primftpd.util.ServicesStartStopUtil;
 import org.primftpd.util.WakelockUtil;
@@ -18,6 +17,8 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.lang.ref.WeakReference;
+import java.util.HashMap;
+import java.util.Map;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -38,6 +39,9 @@ public class ServerServiceHandler extends Handler
 	private static int shellUsers = 0;
 	private static int wakeLockUsers = 0;
 	private static int serversRunning = 0;
+	// number of stops which have been requested but not been done yet, by kind of server
+	private static final Map<String, Integer> PENDING_STOPS = new HashMap<>();
+	private static final long MAX_WAIT_FOR_STOP_MILLIS = 10_000;
 
 	// what the service of this handler has contributed to shared state
 	private boolean usesShell = false;
@@ -59,18 +63,70 @@ public class ServerServiceHandler extends Handler
 	public void handleMessage(Message msg) {
 		logger.debug("handleMessage()");
 
+		int toDo = msg.arg1;
 		AbstractServerService service = serviceRef.get();
 		if (service == null) {
 			logger.warn("serviceRef is null ({})", logName);
+			if (toDo == AbstractServerService.MSG_STOP) {
+				stopHandled();
+			}
 			return;
 		}
 
-		int toDo = msg.arg1;
 		if (toDo == AbstractServerService.MSG_START) {
 			handleStart(service);
 
 		} else if (toDo == AbstractServerService.MSG_STOP) {
-			handleStop(service);
+			try {
+				handleStop(service);
+			} finally {
+				stopHandled();
+			}
+		}
+	}
+
+	/**
+	 * To be called when a service is destroyed, before the stop message is sent.
+	 * A server is stopped by the thread of its (old) service instance. If the service is started again
+	 * right away (e.g. quick share), the new instance has to wait until the port is free.
+	 */
+	void stopRequested() {
+		synchronized (SHARED_STATE_LOCK) {
+			Integer pending = PENDING_STOPS.get(logName);
+			PENDING_STOPS.put(logName, pending != null ? pending + 1 : 1);
+		}
+	}
+
+	private void stopHandled() {
+		synchronized (SHARED_STATE_LOCK) {
+			Integer pending = PENDING_STOPS.get(logName);
+			if (pending != null) {
+				if (pending <= 1) {
+					PENDING_STOPS.remove(logName);
+				} else {
+					PENDING_STOPS.put(logName, pending - 1);
+				}
+			}
+			SHARED_STATE_LOCK.notifyAll();
+		}
+	}
+
+	private void awaitPendingStops() {
+		long deadline = System.currentTimeMillis() + MAX_WAIT_FOR_STOP_MILLIS;
+		synchronized (SHARED_STATE_LOCK) {
+			while (PENDING_STOPS.containsKey(logName)) {
+				long remaining = deadline - System.currentTimeMillis();
+				if (remaining <= 0) {
+					logger.warn("previous {} server is still stopping, starting anyway", logName);
+					break;
+				}
+				try {
+					SHARED_STATE_LOCK.wait(remaining);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					break;
+				}
+			}
 		}
 	}
 
@@ -83,6 +139,9 @@ public class ServerServiceHandler extends Handler
 			// XXX set properties to prefer IPv4 to run in simulator
 			System.setProperty("java.net.preferIPv4Stack", "true");
 			System.setProperty("java.net.preferIPv6Addresses", "false");
+
+			// server of this kind may still be shutting down, its port would be in use
+			awaitPendingStops();
 
 			boolean started = false;
 			try {
@@ -137,14 +196,7 @@ public class ServerServiceHandler extends Handler
 			service.startForeground(NotificationUtil.NOTIFICATION_ID, notification);
 		} else {
 			try {
-				Notification notification = NotificationUtil.createStatusbarNotification(
-						service,
-						service.prefsBean,
-						service.keyFingerprintProvider != null
-								? service.keyFingerprintProvider
-								: new KeyFingerprintProvider(),
-						service.quickShareBean,
-						service.chosenIp);
+				Notification notification = NotificationUtil.buildServerNotStartedNotification(service);
 				service.startForeground(NotificationUtil.NOTIFICATION_ID, notification);
 				service.stopForeground(android.app.Service.STOP_FOREGROUND_REMOVE);
 			} catch (Exception e) {

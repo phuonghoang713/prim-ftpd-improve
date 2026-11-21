@@ -37,6 +37,20 @@ Findings are described in [../round-2.md](../round-2.md), tests in
 |-------------|-------|---------|
 | A passive data connection from a wrong address is dropped and the server keeps waiting for the client. Other hosts can no longer make transfers fail by connecting first. | `primitiveFTPd/.../io/AndroidIoDataConnectionFactory.java` | R2-S1 |
 
+## Third pass (remaining files)
+
+| Improvement | Files | Finding |
+|-------------|-------|---------|
+| PowerToggles plugin only acts if remote control has been enabled in the preferences (same switch as for Tasker). | `primitiveFTPd/.../remotecontrol/PftpdPowerTogglesPlugin.java` | R2-S2 |
+| "Save as" ignores entries of share intents which are no URIs / no strings, write errors of shared text are shown. | `primitiveFTPd/.../share/ReceiveSaveAsActivity.java` | R2-B12, R2-B17 |
+| Unknown preference values fall back to defaults, idle timeout is limited to 0 .. 2,000,000 seconds. | `primitiveFTPd/.../prefs/LoadPrefsUtil.java`, `log/LogController.java` | R2-B13 |
+| A server waits (at most 10 seconds) until a server of the same kind which is being stopped has released its port. | `primitiveFTPd/.../services/ServerServiceHandler.java`, `AbstractServerService.java` | R2-B14 |
+| Dialogs read their arguments when they are created. | `primitiveFTPd/.../ui/DownloadOrSaveDialogFragment.java`, `GenKeysAskDialogFragment.java` | R2-B15 |
+| Key list is read line by line until end of file, added keys are trimmed. | `primitiveFTPd/.../ui/SharedViewModel.java` | R2-B16 |
+| Download service stops with the id of its start request. | `primitiveFTPd/.../services/DownloadsService.java` | R2-B18 |
+| Minimal notification for a server which could not be started. | `primitiveFTPd/.../util/NotificationUtil.java`, `services/ServerServiceHandler.java` | R2-B19 |
+| Unit suffix for small transfer rates. | `primitiveFTPd/.../util/FileSizeUtils.java` | R2-B20 |
+
 ## Documentation
 
 | Improvement | Files |
@@ -55,3 +69,5 @@ Findings are described in [../round-2.md](../round-2.md), tests in
 3. Storage type "super user" on a device without root: the server does not
    start anymore.
 4. An SFTP client is told if closing an uploaded file failed.
+5. The PowerToggles plugin needs the preference which enables remote
+   control (Tasker), it is off by default.

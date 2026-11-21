@@ -54,6 +54,32 @@ taking longer than the idle timeout, closing of really idle FTP sessions.
 |---|------|----------|
 | R2-S1 | **Any host could make FTP transfers of others fail.** With the IP check of passive data connections (first review, S5) a connection from a wrong address made the server close the passive socket and fail the transfer. A host which connects to the (single, predictable) passive port first could do that for every transfer. It could not read data. | `io/AndroidIoDataConnectionFactory` |
 
+## Third pass: the files which had not been read
+
+After the question whether really everything had been reviewed, the remaining
+files of the app were read completely and the fixes above were read again as
+a diff.
+
+| # | Problem | Location |
+|---|---------|----------|
+| R2-S2 | **Any app could start and stop the server through the PowerToggles plugin.** The receiver is protected by a permission which is defined by the PowerToggles app. If that app is not installed (it has been gone for years), any app can define the permission itself and send the broadcast. Unlike the Tasker plugin there was no preference to switch it off. | `remotecontrol/PftpdPowerTogglesPlugin` |
+| R2-B12 | "Save as" crashed on share intents whose lists contain `null` or objects which are no URIs. The activity is exported, the intent comes from other apps. | `share/ReceiveSaveAsActivity` |
+| R2-B13 | Unknown values of the preferences "which server", "storage type" and "logging" resulted in `null` and crashed later, for logging at every start of the app. A negative idle timeout made the servers fail to start, a very large one overflowed when converted to milliseconds. | `prefs/LoadPrefsUtil`, `log/LogController` |
+| R2-B14 | Quick share while a server is running stops the servers and starts them again at once. Stop is done by the thread of the old service instance, start by the new one: the new server could find its port still in use. | `services/ServerServiceHandler`, `AbstractServerService` |
+| R2-B15 | Two dialogs kept their arguments in fields set by `setArguments()`. Android does not call it when it re-creates a fragment: the download URL was `null`, "start server after generating keys" was forgotten. | `ui/DownloadOrSaveDialogFragment`, `ui/GenKeysAskDialogFragment` |
+| R2-B16 | List of keys for public key authentication was read with `reader.ready()` as end-of-file check (same as B42 of the first review). A key added in the app was written with surrounding white space. | `ui/SharedViewModel` |
+| R2-B17 | "Save as" of shared text ignored write errors (`PrintStream` does not throw). | `share/ReceiveSaveAsActivity` |
+| R2-B18 | Refinement of R2-B6: the download service could stop itself although another download had been requested in the same moment. It stops with the id of its start request now. | `services/DownloadsService` |
+| R2-B19 | Refinement of R2-B1: the notification used for a failed start was the complete "server running" notification, building it reads keys and network interfaces and could fail itself. A minimal notification is used. | `services/ServerServiceHandler`, `util/NotificationUtil` |
+| R2-B20 | Transfer rates below 1000 bytes were shown without their unit suffix. | `util/FileSizeUtils` |
+
+Read without findings: `HostKeyAlgorithm`, `KeyFingerprintProvider`,
+`TaskerReceiver*`, `Tasker*Activity`, `LogController`, `CsvEncoder`,
+`MainTabsActivity`, `CleanSpaceFragment`, `ClientActionFragment`,
+`QrFragment` (the QR code contains no password), `KeysFingerprintsFragment`,
+`PubKeyAuthKeysFragment`, `AboutFragment`, `Leanback*`,
+`ReceiveQuickShareActivity`, preference widgets.
+
 ## Open points (not changed)
 
 | # | Point | Why not changed |
@@ -65,25 +91,22 @@ taking longer than the idle timeout, closing of really idle FTP sessions.
 | R2-O5 | A cancelled or failed download and a failed copy of shared data leave the partial file. | Would need storage type specific deletion, user is told about the failure now. |
 | R2-O6 | A service restarted by Android after the process was killed (`START_STICKY`, intent is null) does not start its server again. | Would need loading of preferences in the service, behaviour of the original app. |
 | R2-O7 | SCP download with wild cards scans the real file system relative to the working directory of the process. | Vendored code, rarely used. |
-| R2-O8 | `PftpdFragment.onResume()` uses an `ExecutorService` in try-with-resources, which waits for the task on the main thread. | Task is short (list of network interfaces), no visible effect. |
+| R2-O8 | `ExecutorService` in try-with-resources is used to "run in background" in `PftpdFragment` (3 places), `QrFragment` and `GenKeysAskDialogFragment`. Closing waits for the task, so the work blocks the main thread. For key generation with RSA 4096 this can take long enough for an "app not responding" dialog. | The code after these blocks relies on the work being done (e.g. fingerprints are calculated right after generating keys). Making it really asynchronous changes the order of events in the UI and needs testing on a device. |
+| R2-O9 | Transfer statistics in `ClientActionFragment` are dead code, `DataTransferredEvent` is never posted (already in the original app). | No effect. |
 
 ## Coverage of this review
 
-Read completely again: `io`, `services`, `filesystem`, `pftpd-pojo-lib`,
-`SftpSubsystem` and `ScpHelper` of `sshd-core`, `AbstractReceiveShareActivity`,
-`TargetDir`, `FilenameUnique`, `ServicesStartStopUtil`, `WakelockUtil`,
-`NotificationUtil`, `Defaults`, `RemoteIpChecker`, `IpAddressProvider`,
-`EncryptionUtil`, `SignatureEd25519`, widget provider, boot receiver,
-application class, manifest.
+Read completely: all of `primitiveFTPd/src/org/primftpd` except the two
+vendored parts named below, `pftpd-pojo-lib`, `SftpSubsystem` and `ScpHelper`
+of `sshd-core`, the manifest. Small beans and enums were skimmed.
 
-Read in parts: `PftpdFragment` (storage type and permission handling),
-`LoadPrefsUtil`, `PortEditTextPreference`.
+**Not reviewed:** the vendored directory picker
+(`filepicker/nononsenseapps`, about 2,000 lines), `util/StringUtils` (copy of
+Apache commons-lang, about 4,000 lines), `sshd-core` apart from the two
+classes above and the re-keying code, resources, build scripts.
 
-**Not read in this pass:** `ReceiveQuickShareActivity`, `ReceiveSaveAsActivity`,
-the other fragments and dialogs of `ui`, `remotecontrol`, `log`,
-`KeyFingerprintProvider`, `HostKeyAlgorithm`, the vendored file picker,
-`StringUtils`, the rest of `sshd-core`.
+All changes of this review were read again as a diff. That found R2-B18 and
+R2-B19.
 
 An automated multi-agent review was started in parallel but was cut off by a
-usage limit before it reported anything, none of the findings above come
-from it.
+usage limit before it reported anything, none of the findings come from it.

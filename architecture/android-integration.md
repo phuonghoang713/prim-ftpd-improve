@@ -17,7 +17,7 @@
 | `BootUpReceiver` | receiver | yes (`BOOT_COMPLETED`) | Start on boot, start/stop notification |
 | `StartStopWidgetProvider` | receiver | no | Widget, target of notification actions |
 | `remotecontrol.TaskerReceiverFire`, `TaskerReceiverQuery` | receiver | yes, no permission | Tasker / Locale plugin (acts only if enabled in preferences) |
-| `remotecontrol.PftpdPowerTogglesPlugin` | receiver | yes, needs permission of PowerToggles | PowerToggles plugin |
+| `remotecontrol.PftpdPowerTogglesPlugin` | receiver | yes, needs permission of PowerToggles | PowerToggles plugin (acts only if remote control is enabled in preferences) |
 | `androidx.core.content.FileProvider` | provider | no | Used by the directory picker |
 
 ## Permissions
