@@ -2,19 +2,17 @@ package org.primftpd.filesystem;
 
 import android.database.Cursor;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
 
 import java.util.List;
 
 public class RoSafSshFile extends RoSafFile<SshFile, RoSafSshFileSystemView> implements SshFile {
 
-    private final Session session;
+    private final SshSession session;
 
     public RoSafSshFile(
             RoSafSshFileSystemView fileSystemView,
             String absPath,
-            Session session) {
+            SshSession session) {
         super(fileSystemView, absPath);
         this.session = session;
     }
@@ -24,7 +22,7 @@ public class RoSafSshFile extends RoSafFile<SshFile, RoSafSshFileSystemView> imp
             String absPath,
             String docId,
             boolean exists,
-            Session session) {
+            SshSession session) {
         super(fileSystemView, absPath, docId, exists);
         this.session = session;
     }
@@ -33,7 +31,7 @@ public class RoSafSshFile extends RoSafFile<SshFile, RoSafSshFileSystemView> imp
             RoSafSshFileSystemView fileSystemView,
             String absPath,
             Cursor cursor,
-            Session session) {
+            SshSession session) {
         super(fileSystemView, absPath, cursor);
         this.session = session;
     }

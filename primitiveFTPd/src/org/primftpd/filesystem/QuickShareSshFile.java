@@ -1,21 +1,19 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
 public class QuickShareSshFile extends QuickShareFile<SshFile, QuickShareSshFileSystemView> implements SshFile {
-    private final Session session;
+    private final SshSession session;
 
-    public QuickShareSshFile(QuickShareSshFileSystemView fileSystemView, Session session) {
+    public QuickShareSshFile(QuickShareSshFileSystemView fileSystemView, SshSession session) {
         super(fileSystemView);
         this.session = session;
     }
 
-    public QuickShareSshFile(QuickShareSshFileSystemView fileSystemView, File realFile, Session session) {
+    public QuickShareSshFile(QuickShareSshFileSystemView fileSystemView, File realFile, SshSession session) {
         super(fileSystemView, realFile);
         this.session = session;
     }

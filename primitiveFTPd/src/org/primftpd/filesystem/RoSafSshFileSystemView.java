@@ -2,16 +2,13 @@ package org.primftpd.filesystem;
 
 import android.net.Uri;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.FileSystemView;
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.services.PftpdService;
 
-public class RoSafSshFileSystemView extends RoSafFileSystemView<RoSafSshFile, SshFile> implements FileSystemView {
+public class RoSafSshFileSystemView extends RoSafFileSystemView<RoSafSshFile, SshFile> implements SshFileSystemView {
 
-    private final Session session;
+    private final SshSession session;
 
-    public RoSafSshFileSystemView(PftpdService pftpdService, Uri startUrl, Session session) {
+    public RoSafSshFileSystemView(PftpdService pftpdService, Uri startUrl, SshSession session) {
         super(pftpdService, startUrl);
         this.session = session;
     }
@@ -39,7 +36,7 @@ public class RoSafSshFileSystemView extends RoSafFileSystemView<RoSafSshFile, Ss
     }
 
     @Override
-    public FileSystemView getNormalizedView() {
+    public SshFileSystemView getNormalizedView() {
         logger.trace("getNormalizedView()");
         return this;
     }

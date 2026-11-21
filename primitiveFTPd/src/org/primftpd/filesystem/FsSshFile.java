@@ -1,7 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -11,9 +9,9 @@ import java.nio.channels.FileChannel;
 import java.util.List;
 
 public class FsSshFile extends FsFile<SshFile, FsSshFileSystemView> implements SshFile {
-	private final Session session;
+	private final SshSession session;
 
-	public FsSshFile(FsSshFileSystemView fileSystemView, File file, Session session) {
+	public FsSshFile(FsSshFileSystemView fileSystemView, File file, SshSession session) {
 		super(fileSystemView, file);
 		this.session = session;
 	}

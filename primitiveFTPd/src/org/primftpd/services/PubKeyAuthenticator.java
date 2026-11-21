@@ -1,6 +1,7 @@
 package org.primftpd.services;
 
-import org.apache.sshd.server.PublickeyAuthenticator;
+import org.apache.sshd.common.config.keys.KeyUtils;
+import org.apache.sshd.server.auth.pubkey.PublickeyAuthenticator;
 import org.apache.sshd.server.session.ServerSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,13 +22,16 @@ public class PubKeyAuthenticator implements PublickeyAuthenticator {
 
     @Override
     public boolean authenticate(String username, PublicKey clientKey, ServerSession session) {
+        if (clientKey == null) {
+            return false;
+        }
         logger.debug("attempting pub key auth, user: {}, client key class: '{}'",
                 username, clientKey.getClass().getName());
         // never mind username
         for (PublicKey serverKey : pubKeys) {
             boolean keyEquals = keysEqual(serverKey, clientKey);
             logger.debug("pub key auth, success: {}, server key class '{}'",
-                    keyEquals, serverKey.getClass().getName());
+                    keyEquals, serverKey != null ? serverKey.getClass().getName() : null);
             if (keyEquals) {
                 return true;
             }
@@ -36,19 +40,24 @@ public class PubKeyAuthenticator implements PublickeyAuthenticator {
     }
 
     private boolean keysEqual(PublicKey serverKey, PublicKey clientKey) {
-        // Quick sanity checks
         if (serverKey == clientKey) {
             return true;
         }
         if (serverKey == null || clientKey == null) {
             return false;
         }
-        // Sanity check: their algorithms must match
-        if (!serverKey.getAlgorithm().equalsIgnoreCase(clientKey.getAlgorithm())) {
+        // Keys of authorized_keys are created by this app, key of client by the ssh library: classes and
+        // even names of algorithms may differ for the same key (e.g. 'Ed25519' and 'EdDSA').
+        // The X.509 encoding is the same in any case.
+        byte[] serverEncoded = serverKey.getEncoded();
+        byte[] clientEncoded = clientKey.getEncoded();
+        if (serverEncoded != null && clientEncoded != null && MessageDigest.isEqual(serverEncoded, clientEncoded)) {
+            return true;
+        }
+        try {
+            return KeyUtils.compareKeys(serverKey, clientKey);
+        } catch (RuntimeException e) {
             return false;
         }
-
-        // use constant-time compare
-        return MessageDigest.isEqual(serverKey.getEncoded(), clientKey.getEncoded());
     }
 }

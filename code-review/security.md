@@ -31,7 +31,7 @@ State after the pass over all open risks, see [risks.md](risks.md):
 | # | Risk | State |
 |---|------|-------|
 | O1 | Passwords were stored as SHA-512 with a static salt. | **Fixed** (R3-1): PBKDF2 with random salt, old hashes still accepted. |
-| O2 | `sshd-core` 0.14 is very old. | **Reduced** (R3-3): CBC ciphers and `hmac-sha1-96` are not offered anymore. Key exchange with SHA-1 and missing strict key exchange remain, replacing the library is a project of its own. |
+| O2 | `sshd-core` 0.14 is very old. | **Fixed on branch `feature/replace-ssh-library`** (R3-13): replaced by Apache MINA SSHD 2.19.0. Before that reduced by R3-3. Not yet tested on Android. |
 | O3 | Tasker receivers are exported without permission. | Open: opt-in by preference, now also required for the PowerToggles plugin (R2-S2). |
 | O4 | File provider of the file picker uses `root-path`. | Open: not exported, only used inside the app. |
 | O5 | FTP is not encrypted, anonymous login gives full access. | By design, user's choice. |

@@ -6,10 +6,7 @@
 flowchart TD
     APP[primitiveFTPd<br/>Android application]
     POJO[pftpd-pojo-lib<br/>plain Java]
-    SSHD[sshd-core-0.14.0<br/>Android library, vendored]
     APP --> POJO
-    APP --> SSHD
-    SSHD --> POJO
 ```
 
 ## Packages of the app (`org.primftpd`)
@@ -21,11 +18,12 @@ flowchart TD
 | `prefs` | Preferences. | `LoadPrefsUtil` (keys, defaults, reads `SharedPreferences`), `PrefsBean` (immutable, serializable snapshot handed to the services), `StorageType`, `ServerToStart`, `Logging`, `FtpPrefsFragment` and custom preference widgets (`PortEditTextPreference`, `FtpPassivePortsEditTextPreference`, `EncryptingEditTextPreference`) |
 | `services` | The servers as Android services. | `AbstractServerService`, `FtpServerService`, `SshServerService`, `ServerServiceHandler`, `AndroidPrefsUserManager`, `PubKeyAuthenticator`, `PftpdService` (interface the file system classes use), `QuickSettingsService` (tile), `DownloadsService` (download a shared URL) |
 | `io` | FTP transport adapted to Android. | `PrimNioListener`, `PrimFtpHandlerAdapter`, `PrimFtpIoSession`, `AndroidIoDataConnectionFactory`, `AndroidIoDataConnection`, `CountingReadableByteChannel`, `CountingWritableByteChannel` |
-| `filesystem` | Mapping of server file APIs to storage. | See [storage.md](storage.md) |
+| `filesystem` | The storage types, each for FTP and for SFTP. | See [storage.md](storage.md) |
+| `sftp` | Connects the storage types to the SSH library, which works on `java.nio.file`. | `PftpdFileSystemFactory`, `PftpdFileSystem`, `PftpdFileSystemProvider`, `PftpdFileChannel`, `PftpdSftpSubsystemFactory`, see [ssh-library.md](ssh-library.md) |
 | `share` | Receiving data shared by other apps. | `ReceiveQuickShareActivity`, `ReceiveSaveAsActivity`, `AbstractReceiveShareActivity`, `TargetDir`, `QuickShareBean` |
 | `remotecontrol` | Control by other apps. | `TaskerReceiverFire`, `TaskerReceiverQuery`, `TaskerEditActionActivity`, `TaskerEditConditionActivity`, `PftpdPowerTogglesPlugin` |
 | `events` | Messages on the event bus. | `ClientActionEvent`, `ServerStateChangedEvent`, `ServerInfoRequestEvent`, `ServerInfoResponseEvent`, `DataTransferredEvent` |
-| `crypto` | SSH host keys. | `HostKeyAlgorithm` (ed25519, ECDSA 256, RSA 2048 / 4096: generate, store, read), `SignatureEd25519` (ed25519 signatures for the old SSH library) |
+| `crypto` | SSH host keys. | `HostKeyAlgorithm` (ed25519, ECDSA 256, RSA 2048 / 4096: generate, store, read) |
 | `log` | Logging. | `LogController` (configures logback from the logging preference), `CsvEncoder` |
 | `util` | Helpers. | `ServicesStartStopUtil`, `NotificationUtil`, `WakelockUtil`, `Defaults`, `IpAddressProvider`, `RemoteIpChecker`, `KeyFingerprintProvider`, `FilenameUnique`, `EncryptionUtil`, `StringUtils` |
 | `filepicker` | Directory picker (vendored NoNonsense-FilePicker with small wrappers). | `ResettingFilePickerActivity` |
@@ -70,9 +68,9 @@ classDiagram
 * `FtpServerService.launchServer()` configures Apache FtpServer: listener
   (`PrimNioListener`), passive ports, IP checks of data connections, user
   manager, file system factory, login limits.
-* `SshServerService.launchServer()` configures Apache SSHD: algorithms,
-  authenticators, SFTP subsystem and SCP command, file system factory, host
-  keys.
+* `SshServerService.launchServer()` configures Apache MINA SSHD: algorithms,
+  IP filter, authenticators, SFTP subsystem and SCP command, file system
+  factory, host keys.
 * `ServerServiceHandler` runs on its own `HandlerThread` per service and does
   the actual start and stop, so the main thread is never blocked. It also
   owns the state shared by both services (root shell, wake lock, number of
@@ -83,8 +81,8 @@ classDiagram
 | Library | Used for |
 |---------|----------|
 | Apache FtpServer 1.2.1 (`ftplet-api`, `ftpserver-core`) | FTP protocol |
-| Apache MINA core 2.2.5 | Network I/O of both servers |
-| Apache MINA SSHD 0.14.0 (vendored) | SSH, SFTP, SCP |
+| Apache MINA core 2.2.5 | Network I/O of the FTP server |
+| Apache MINA SSHD 2.19.0 (`sshd-core`, `sshd-sftp`, `sshd-scp`) | SSH, SFTP, SCP, with its own network I/O |
 | BouncyCastle 1.83 (`bcprov`, `bcpkix`, `bcutil`) | Key generation, key formats, ed25519 |
 | greenrobot EventBus 3.3.1 | Communication between services and UI |
 | slf4j 2.0.17 + logback-android 3.0.0 | Logging |
@@ -103,14 +101,8 @@ classDiagram
 Tests: `KeyParserTests`, `LsOutputParserTests` (JUnit 4) with sample key
 files and `ls` outputs in `src/test/resources`.
 
-## `sshd-core-0.14.0`
+## SSH library
 
-Upstream code of Apache MINA SSHD 0.14.0 with local changes. The parts the
-app depends on most:
-
-| Class | Role |
-|-------|------|
-| `server/sftp/SftpSubsystem` | SFTP protocol (version 3). `FileHandle` turns positional reads and writes of clients into the stream API of `SshFile`. Extended command `check-file` (hash of a file) was added for prim-sync. |
-| `common/scp/ScpHelper`, `server/command/ScpCommand` | Legacy SCP protocol. |
-| `common/file/SshFile`, `FileSystemView` | File interfaces implemented by `org.primftpd.filesystem`. |
-| `server/session/ServerSession`, `common/session/AbstractSession` | SSH transport incl. re-keying after 1 GB or 1 hour. |
+Apache MINA SSHD 2.x (`sshd-core`, `sshd-sftp`, `sshd-scp`) is a dependency,
+it is not part of the repository anymore. How the app is connected to it is
+described in [ssh-library.md](ssh-library.md).

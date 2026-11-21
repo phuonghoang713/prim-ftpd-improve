@@ -1,6 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.events.ClientActionEvent;
 import org.primftpd.services.PftpdService;
 import org.slf4j.Logger;

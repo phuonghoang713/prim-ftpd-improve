@@ -55,7 +55,8 @@ Rules which are easy to get wrong:
 |--------|------|
 | Main thread | UI, `onStartCommand()` / `onDestroy()` of services, timers (`Handler`), event bus subscribers with `ThreadMode.MAIN` |
 | `ServiceStartArguments` (one `HandlerThread` per service) | Start and stop of a server |
-| MINA acceptor and I/O processors | Sockets of FTP control connections and of SSH |
+| MINA acceptor and I/O processors | Sockets of FTP control connections |
+| Threads of the SSH library (`sshd-...`) | Sockets of SSH (asynchronous channels of `java.nio`), timers |
 | FtpServer worker pool (ordered per session) | FTP commands **including the data transfer**: one command of a session runs at a time, a transfer blocks its session until it is done |
 | `sshd-SftpSubsystem-thread` (one per SFTP channel) | SFTP requests of that channel, one after the other |
 | libsuperuser threads | Root shell: commands are queued, callers wait with `waitForIdle()` |
@@ -104,14 +105,16 @@ sequenceDiagram
 ## SFTP transfer
 
 SFTP has no "transfer" command. A client opens a file, sends many read or
-write requests with an offset and closes the file. `SftpSubsystem.FileHandle`
-maps this to streams:
+write requests with an offset and closes the file. The SSH library turns
+each request into a positional read or write on a channel of
+`java.nio.file`. `PftpdFileChannel` maps that to the streams of the storage
+types:
 
 ```mermaid
 flowchart TD
-    R[read or write request with offset] --> Q{stream open and<br/>offset == stream position?}
+    R[read or write at a position] --> Q{stream open and<br/>position == stream position?}
     Q -- yes --> U[use the open stream]
-    Q -- no --> N[close stream,<br/>createInputStream / createOutputStream at offset]
+    Q -- no --> N[close stream,<br/>createInputStream / createOutputStream at position]
     N --> U
     U --> P[advance stream position]
 ```
@@ -120,12 +123,14 @@ flowchart TD
   file. Random access works but re-opens the stream each time.
 * Reads fill the requested length completely, otherwise clients would ask
   for the rest and the stream would be re-opened for every request.
-* Closing a handle closes the stream and reports errors of that to the
+* Closing the channel closes the stream and reports errors of that to the
   client (buffered data is written at this point).
-* Attributes sent while a file is written (`put -p` sends the modification
-  time before closing) are applied again after the stream has been closed.
-* SSH keys are exchanged again after 1 GB or 1 hour (`ServerSession`), a
-  large transfer therefore passes several re-keyings.
+* A modification time set while a file is written (`put -p` sends it before
+  closing) is applied again after the stream has been closed.
+* SSH keys are exchanged again after 1 GB or 1 hour, a large transfer
+  therefore passes several re-keyings.
+* Legacy SCP goes the same way: the library reads and writes through streams
+  of `java.nio.file`, which are built on the same channel.
 
 ## What keeps a long transfer alive
 
@@ -137,7 +142,7 @@ flowchart TD
 
 Both servers record the time of the last transferred block in a static field
 (`AndroidIoDataConnection.getLastTransferTimestamp()`,
-`SftpSubsystem.getLastTransferTimestamp()`).
+`PftpdFileChannel.getLastTransferTimestamp()`).
 
 ## Events
 

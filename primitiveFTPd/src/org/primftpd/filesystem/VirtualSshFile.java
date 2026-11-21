@@ -1,21 +1,19 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
 
 import java.io.IOException;
 import java.util.List;
 
 public class VirtualSshFile extends VirtualFile<SshFile, VirtualSshFileSystemView> implements SshFile {
 
-    private final Session session;
+    private final SshSession session;
 
-    public VirtualSshFile(VirtualSshFileSystemView fileSystemView, String absPath, AbstractFile<VirtualSshFileSystemView> delegate, Session session) {
+    public VirtualSshFile(VirtualSshFileSystemView fileSystemView, String absPath, AbstractFile<VirtualSshFileSystemView> delegate, SshSession session) {
         super(fileSystemView, absPath, delegate);
         this.session = session;
     }
 
-    public VirtualSshFile(VirtualSshFileSystemView fileSystemView, String absPath, boolean exists, Session session) {
+    public VirtualSshFile(VirtualSshFileSystemView fileSystemView, String absPath, boolean exists, SshSession session) {
         super(fileSystemView, absPath, exists);
         this.session = session;
     }

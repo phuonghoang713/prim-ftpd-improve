@@ -70,7 +70,8 @@ Please read the security advisory linked there before enabling it: any app on yo
 
 * The password is stored as salted PBKDF2 hash. Passwords set with older versions keep working.
 * After 10 wrong passwords from one address, logins from that address are refused for one minute (ftp and sftp).
-* The sftp server only offers CTR ciphers, very old clients which need CBC can not connect.
+* The sftp server is Apache MINA SSHD 2.x and offers current algorithms (e.g. curve25519, chacha20-poly1305, AES-GCM).
+  Nothing based on SHA-1, MD5 or CBC is offered, clients from before about 2014 can not connect.
 * ftp is not encrypted, use sftp in networks you do not trust. Keep anonymous login disabled.
 * Every risk which was found, fixed or left open is listed in [code-review/risks.md](code-review/risks.md).
 
@@ -99,12 +100,14 @@ tests with 5 GiB files: [code-review/verification.md](code-review/verification.m
 ## Documentation in this repository
 
 * [architecture/](architecture/README.md): how the app is built (components, runtime flows, storage types, Android integration)
+* [architecture/ssh-library.md](architecture/ssh-library.md): which ssh library is used and why
 * [code-review/](code-review/README.md): findings of the code reviews, what has been verified
 * [code-review/improve/](code-review/improve/README.md): what has been improved
 * [code-review/verification.md](code-review/verification.md): what has been tested and what still has to be tested on a device
 
 The changes of the code reviews have been tested with real ftp, sftp and scp clients against the server code
 running on a desktop JVM. They have not been tested on an Android device yet.
+This is most important for the replaced ssh library: build the app and test sftp on a device before releasing it.
 
 ## Translation
 You may help translate this app in [hosted weblate](https://hosted.weblate.org/projects/pftpd/pftpd/).
@@ -124,6 +127,9 @@ SHA256: 71:51:AE:6D:56:F1:56:E6:72:24:E7:CA:3F:9C:00:DA:6F:70:30:B6:6C:C8:44:3F:
 
 
 ## SFTP vs SCP
+
+Note: since the ssh library has been replaced (branch `feature/replace-ssh-library`) scp works with and without option -O.
+The following applied to older versions.
 
 When accessing this app's server via scp, it might be necessary for some clients (specific versions of ssh coming with linux distros), to specify option -O. 
 

@@ -1,7 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.pojo.LsOutputBean;
 
 import java.io.IOException;
@@ -14,9 +12,9 @@ import java.util.Set;
 
 public class RootSshFile extends RootFile<SshFile, RootSshFileSystemView> implements SshFile {
 
-    private final Session session;
+    private final SshSession session;
 
-    public RootSshFile(RootSshFileSystemView fileSystemView, String absPath, LsOutputBean bean, Session session) {
+    public RootSshFile(RootSshFileSystemView fileSystemView, String absPath, LsOutputBean bean, SshSession session) {
         super(fileSystemView, absPath, bean);
         this.session = session;
     }

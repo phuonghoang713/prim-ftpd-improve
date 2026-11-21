@@ -1,8 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.FileSystemView;
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.services.PftpdService;
 import org.primftpd.pojo.LsOutputBean;
 
@@ -10,12 +7,12 @@ import java.io.File;
 
 import eu.chainfire.libsuperuser.Shell;
 
-public class RootSshFileSystemView extends RootFileSystemView<RootSshFile, SshFile> implements FileSystemView {
+public class RootSshFileSystemView extends RootFileSystemView<RootSshFile, SshFile> implements SshFileSystemView {
 
     private final File homeDir;
-    private final Session session;
+    private final SshSession session;
 
-    public RootSshFileSystemView(PftpdService pftpdService, Shell.Interactive shell, File homeDir, Session session) {
+    public RootSshFileSystemView(PftpdService pftpdService, Shell.Interactive shell, File homeDir, SshSession session) {
         super(pftpdService, shell);
         this.homeDir = homeDir;
         this.session = session;
@@ -39,7 +36,7 @@ public class RootSshFileSystemView extends RootFileSystemView<RootSshFile, SshFi
     }
 
     @Override
-    public FileSystemView getNormalizedView() {
+    public SshFileSystemView getNormalizedView() {
         logger.trace("getNormalizedView()");
         return this;
     }

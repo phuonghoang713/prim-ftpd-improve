@@ -30,7 +30,10 @@ logbackAndroid = "3.0.0"
 slf4jApi = "2.0.17"
 zxing = "1.9.8"
 
-# Don't upgrade these any higher without migrating away from sshd-core 0.14
+# Apache MINA SSHD, replaces the vendored sshd-core 0.14
+sshd = "2.19.0"
+
+# ftpserver 1.2.1 is built for this version of mina
 ftpserver = "1.2.1"
 minaCore = "2.2.5"
 
@@ -60,6 +63,9 @@ libsuperuser = { group = "eu.chainfire", name = "libsuperuser", version.ref = "l
 logback-android = { group = "com.github.tony19", name = "logback-android", version.ref = "logbackAndroid" }
 mina-core = { group = "org.apache.mina", name = "mina-core", version.ref = "minaCore" }
 slf4j-api = { group = "org.slf4j", name = "slf4j-api", version.ref = "slf4jApi" }
+sshd-core = { group = "org.apache.sshd", name = "sshd-core", version.ref = "sshd" }
+sshd-sftp = { group = "org.apache.sshd", name = "sshd-sftp", version.ref = "sshd" }
+sshd-scp = { group = "org.apache.sshd", name = "sshd-scp", version.ref = "sshd" }
 zxing = { group = "me.dm7.barcodescanner", name = "zxing", version.ref = "zxing" }
 
 [plugins]

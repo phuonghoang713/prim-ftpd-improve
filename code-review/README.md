@@ -7,7 +7,8 @@ Reviews of the app code of primitive ftpd on branch
 |--------|------|--------|
 | First | 2026-11-21 | 22 problems with large files, 44 bugs, 9 security issues fixed. Commits `3554ec2`, `ec9f15d`. |
 | Second | 2026-11-21 | Re-check with real clients and 5 GiB files, use without root, Android 10+. 7 transfer problems, 20 bugs, 2 security issues fixed. |
-| Open risks | 2026-11-21 | Every risk still listed as open: 12 fixed (password storage, login limit, SSH ciphers, deletes, ...), 11 stay open with reasons. |
+| Open risks | 2026-11-21 | Every risk still listed as open: 12 fixed (password storage, login limit, SSH ciphers, deletes, ...), the rest stays open with reasons. |
+| SSH library | 2026-11-21 | Apache SSHD 0.14 replaced by Apache MINA SSHD 2.19.0 on branch `feature/replace-ssh-library`, see [../architecture/ssh-library.md](../architecture/ssh-library.md). |
 
 | File | Content |
 |------|---------|

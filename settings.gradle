@@ -16,4 +16,3 @@ dependencyResolutionManagement {
 
 include ':primitiveFTPd'
 include ':pftpd-pojo-lib'
-include ':sshd-core-0.14.0'

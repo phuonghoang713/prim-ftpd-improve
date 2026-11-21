@@ -72,7 +72,7 @@ Recommended setup without root:
 | Protocol | Mechanisms |
 |----------|------------|
 | FTP | User name and password of the preferences (`AndroidPrefsUserManager`), optional anonymous login. At most 5 failed logins per connection with a delay, plus the limit per address. |
-| SFTP | Password (same user manager), public key (`PubKeyAuthenticator`, keys from `authorized_keys` in the app's external files dir, user name is ignored), optional anonymous login. |
+| SFTP | Password (same user manager), public key (`PubKeyAuthenticator`, keys from `authorized_keys` in the app's external files dir, user name is ignored), optional anonymous login. Algorithms: defaults of Apache MINA SSHD without CBC and without SHA-1 / MD5 for key exchange and MAC. |
 
 The password is stored as PBKDF2 hash (HMAC-SHA256, random salt) in the
 preferences (`EncryptionUtil`, `EncryptingEditTextPreference`), hashes of the

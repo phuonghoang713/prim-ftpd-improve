@@ -1,8 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.FileSystemView;
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.services.PftpdService;
 
 import java.io.File;
@@ -12,10 +9,10 @@ public class VirtualSshFileSystemView extends VirtualFileSystemView<
         RootSshFile,
         SafSshFile,
         RoSafSshFile,
-        SshFile> implements FileSystemView {
+        SshFile> implements SshFileSystemView {
 
     private final File homeDir;
-    private final Session session;
+    private final SshSession session;
 
     public VirtualSshFileSystemView(
             PftpdService pftpdService,
@@ -24,7 +21,7 @@ public class VirtualSshFileSystemView extends VirtualFileSystemView<
             SafSshFileSystemView safFileSystemView,
             RoSafSshFileSystemView roSafFileSystemView,
             File homeDir,
-            Session session) {
+            SshSession session) {
         super(pftpdService, fsFileSystemView, rootFileSystemView, safFileSystemView, roSafFileSystemView);
         this.homeDir = homeDir;
         this.session = session;
@@ -53,7 +50,7 @@ public class VirtualSshFileSystemView extends VirtualFileSystemView<
     }
 
     @Override
-    public FileSystemView getNormalizedView() {
+    public SshFileSystemView getNormalizedView() {
         return this;
     }
 }

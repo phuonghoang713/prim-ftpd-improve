@@ -1,8 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
-import org.primftpd.util.IpAddressProvider;
 
 import java.util.EnumSet;
 import java.util.HashSet;
@@ -101,9 +98,10 @@ class SshUtils {
         }
     }
 
-    static String getClientIp(Session session) {
+    static String getClientIp(SshSession session) {
         try {
-            return IpAddressProvider.extractIp(String.valueOf(session.getIoSession().getRemoteAddress()));
+            String clientIp = session != null ? session.getClientIp() : null;
+            return clientIp != null && !clientIp.isEmpty() ? clientIp : "unknown ip";
         } catch (Exception e) {
             // e.g. session already closed
             return "unknown ip";

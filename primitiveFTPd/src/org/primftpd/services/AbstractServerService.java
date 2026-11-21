@@ -19,7 +19,7 @@ import android.widget.Toast;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.apache.sshd.server.sftp.SftpSubsystem;
+import org.primftpd.sftp.PftpdFileChannel;
 import org.primftpd.io.AndroidIoDataConnection;
 import org.primftpd.events.ClientActionEvent;
 import org.primftpd.events.ServerInfoRequestEvent;
@@ -102,7 +102,7 @@ public abstract class AbstractServerService
 	private static long lastTransferTimestamp() {
 		return Math.max(
 				AndroidIoDataConnection.getLastTransferTimestamp(),
-				SftpSubsystem.getLastTransferTimestamp());
+				PftpdFileChannel.getLastTransferTimestamp());
 	}
 
 	protected abstract ServerServiceHandler createServiceHandler(

@@ -10,29 +10,32 @@ import org.apache.ftpserver.usermanager.AnonymousAuthentication;
 import org.apache.ftpserver.usermanager.UsernamePasswordAuthentication;
 import org.apache.ftpserver.usermanager.impl.UserMetadata;
 import org.apache.ftpserver.util.IoUtils;
-import org.apache.sshd.SshServer;
-import org.apache.sshd.common.NamedFactory;
-import org.apache.sshd.common.Signature;
+import org.apache.sshd.common.NamedResource;
 import org.apache.sshd.common.io.IoSession;
-import org.apache.sshd.common.io.mina.MinaServiceFactoryFactory;
-import org.apache.sshd.common.keyprovider.AbstractKeyPairProvider;
-import org.apache.sshd.common.session.AbstractSession;
-import org.apache.sshd.common.util.KeyUtils;
-import org.apache.sshd.server.Command;
-import org.apache.sshd.server.command.ScpCommandFactory;
+import org.apache.sshd.common.io.nio2.Nio2ServiceFactoryFactory;
+import org.apache.sshd.common.keyprovider.KeyPairProvider;
+import org.apache.sshd.common.session.helpers.AbstractSession;
+import org.apache.sshd.core.CoreModuleProperties;
+import org.apache.sshd.scp.server.ScpCommandFactory;
+import org.apache.sshd.server.SshServer;
+import org.apache.sshd.server.session.ServerSessionImpl;
 import org.apache.sshd.server.session.SessionFactory;
-import org.apache.sshd.server.sftp.SftpSubsystem;
+import org.apache.sshd.sftp.SftpModuleProperties;
 import org.primftpd.R;
 import org.primftpd.crypto.HostKeyAlgorithm;
-import org.primftpd.crypto.SignatureEd25519;
 import org.primftpd.events.ClientActionEvent;
 import org.primftpd.filesystem.FsSshFileSystemView;
 import org.primftpd.filesystem.QuickShareSshFileSystemView;
 import org.primftpd.filesystem.RoSafSshFileSystemView;
 import org.primftpd.filesystem.RootSshFileSystemView;
 import org.primftpd.filesystem.SafSshFileSystemView;
+import org.primftpd.filesystem.SshFileSystemView;
+import org.primftpd.filesystem.SshSession;
+import org.primftpd.filesystem.VirtualFileSystemView;
 import org.primftpd.filesystem.VirtualSshFileSystemView;
 import org.primftpd.pojo.KeyParser;
+import org.primftpd.sftp.PftpdFileSystemFactory;
+import org.primftpd.sftp.PftpdSftpSubsystemFactory;
 import org.primftpd.util.Defaults;
 import org.primftpd.util.RemoteIpChecker;
 import org.primftpd.util.StringUtils;
@@ -44,12 +47,11 @@ import java.net.SocketAddress;
 import java.security.KeyPair;
 import java.security.PrivateKey;
 import java.security.PublicKey;
+import java.time.Duration;
 import java.util.ArrayList;
-import java.util.Set;
-import java.util.HashSet;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 import eu.chainfire.libsuperuser.Shell;
 
@@ -100,11 +102,13 @@ public class SshServerService extends AbstractServerService
 		}
 		try {
 			List<AbstractSession> activeSessions = sshServer.getActiveSessions();
-			for (AbstractSession session : activeSessions) {
-				try {
-					session.disconnect(-1, "server close");
-				} catch (IOException e) {
-					logger.error("could not end active session", e);
+			if (activeSessions != null) {
+				for (AbstractSession session : activeSessions) {
+					try {
+						session.close(true);
+					} catch (Exception e) {
+						logger.error("could not end active session", e);
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -129,7 +133,8 @@ public class SshServerService extends AbstractServerService
 	{
 		sshServer = SshServer.setUpDefaultServer();
 
-		// do not offer algorithms which are known to be broken
+		// The library offers current algorithms by default (e.g. chacha20-poly1305, aes-gcm, curve25519,
+		// strict key exchange). Just do not offer what is left for very old clients.
 		sshServer.setCipherFactories(withoutWeakAlgorithms(sshServer.getCipherFactories()));
 		sshServer.setMacFactories(withoutWeakAlgorithms(sshServer.getMacFactories()));
 		sshServer.setKeyExchangeFactories(withoutWeakAlgorithms(sshServer.getKeyExchangeFactories()));
@@ -139,24 +144,30 @@ public class SshServerService extends AbstractServerService
 			sshServer.setHost(bindIp);
 		}
 
-		// causes exception when not set
-		sshServer.setIoServiceFactoryFactory(new MinaServiceFactoryFactory());
+		// do not depend on lookup of services, use I/O of the library itself
+		sshServer.setIoServiceFactoryFactory(new Nio2ServiceFactoryFactory());
 
-		PftpdService pftpdService = this;
-		sshServer.setSessionFactory(new SessionFactory() {
+		// Refuse connections of clients which are not allowed by ip pattern.
+		// Note: must be done when the session is created. The event 'connection accepted' of the library
+		// comes earlier, but a connection which is refused there is not closed, the client would hang.
+		final PftpdService pftpdService = this;
+		sshServer.setSessionFactory(new SessionFactory(sshServer) {
 			@Override
-			protected AbstractSession createSession(IoSession ioSession) throws Exception {
+			protected ServerSessionImpl doCreateSession(IoSession ioSession) throws Exception {
 				SocketAddress remoteAddress = ioSession.getRemoteAddress();
-				boolean ipAllowed = RemoteIpChecker.ipAllowed(remoteAddress, pftpdService, logger);
-				return ipAllowed ? super.createSession(ioSession) : null;
+				if (!RemoteIpChecker.ipAllowed(remoteAddress, pftpdService, logger)) {
+					throw new IOException("client is not allowed to connect: " + remoteAddress);
+				}
+				return super.doCreateSession(ioSession);
 			}
 		});
 
 		// enable scp and sftp
 		sshServer.setCommandFactory(new ScpCommandFactory());
-		List<NamedFactory<Command>> factoryList = new ArrayList<>(1);
-		factoryList.add(new SftpSubsystem.Factory());
-		sshServer.setSubsystemFactories(factoryList);
+		sshServer.setSubsystemFactories(Collections.singletonList(new PftpdSftpSubsystemFactory()));
+
+		// an (authenticated) client must not be able to open handles without limit
+		SftpModuleProperties.MAX_OPEN_HANDLES_PER_SESSION.set(sshServer, 1000);
 
 		// PasswordAuthenticator based on android preferences
 		if (StringUtils.isNotEmpty(prefsBean.getPassword())
@@ -167,7 +178,7 @@ public class SshServerService extends AbstractServerService
 			// address of client is needed to limit failed logins
 			UserMetadata userMetadata = new UserMetadata();
 			try {
-				SocketAddress remoteAddress = session.getIoSession().getRemoteAddress();
+				SocketAddress remoteAddress = session.getClientAddress();
 				if (remoteAddress instanceof InetSocketAddress) {
 					userMetadata.setInetAddress(((InetSocketAddress) remoteAddress).getAddress());
 				}
@@ -186,6 +197,8 @@ public class SshServerService extends AbstractServerService
 			}
 			return true;
 			});
+		} else {
+			sshServer.setPasswordAuthenticator(null);
 		}
 
 		if (prefsBean.isPubKeyAuth()) {
@@ -207,143 +220,43 @@ public class SshServerService extends AbstractServerService
 		}
 
 		// android filesystem view
-		sshServer.setFileSystemFactory(session -> {
-			if (quickShareBean != null) {
-				logger.debug("launching server in quick share mode");
-				return new QuickShareSshFileSystemView(
-						SshServerService.this,
-						quickShareBean.getTmpDir(),
-						session);
-			} else {
+		sshServer.setFileSystemFactory(new PftpdFileSystemFactory(new PftpdFileSystemFactory.ViewFactory() {
+			@Override
+			public SshFileSystemView createView(SshSession session) {
+				return createFileSystemView(shell, session);
+			}
+
+			@Override
+			public String getHomeDir() {
+				if (quickShareBean != null) {
+					return "/";
+				}
+				String startDir = prefsBean.getStartDir().getAbsolutePath();
 				switch (prefsBean.getStorageType()) {
 					case PLAIN:
-						return new FsSshFileSystemView(
-								SshServerService.this,
-								prefsBean.getStartDir(),
-								session);
 					case ROOT:
-						return new RootSshFileSystemView(
-								SshServerService.this,
-								shell,
-								prefsBean.getStartDir(),
-								session);
-					case SAF:
-						return new SafSshFileSystemView(
-								SshServerService.this,
-								Uri.parse(prefsBean.getSafUrl()),
-								session);
-					case RO_SAF:
-						return new RoSafSshFileSystemView(
-								SshServerService.this,
-								Uri.parse(prefsBean.getSafUrl()),
-								session);
+						return startDir;
 					case VIRTUAL:
-						return new VirtualSshFileSystemView(
-								SshServerService.this,
-								new FsSshFileSystemView(
-										SshServerService.this,
-										prefsBean.getStartDir(),
-										session),
-								new RootSshFileSystemView(
-										SshServerService.this,
-										shell,
-										prefsBean.getStartDir(),
-										session),
-								new SafSshFileSystemView(
-										SshServerService.this,
-										Uri.parse(prefsBean.getSafUrl()),
-										session),
-								new RoSafSshFileSystemView(
-										SshServerService.this,
-										Uri.parse(prefsBean.getSafUrl()),
-										session),
-								prefsBean.getStartDir(),
-								session
-						);
+						return "/" + VirtualFileSystemView.PREFIX_FS + startDir;
+					default:
+						return "/";
 				}
 			}
-			return null;
-		});
+		}));
 
-		// ed25519
-		List<NamedFactory<Signature>> origSigFactories = sshServer.getSignatureFactories();
-		List<NamedFactory<Signature>> sigFactories = new ArrayList<>(origSigFactories.size() + 1);
-		sigFactories.addAll(origSigFactories);
-		sigFactories.add(new SignatureEd25519.Factory());
-		sshServer.setSignatureFactories(sigFactories);
-
-		// an (authenticated) client must not be able to open handles without limit
-		sshServer.getProperties().put(SftpSubsystem.MAX_OPEN_HANDLES_PER_SESSION, "1000");
-
-		// idle timeout
-		// sec -> ms
-		sshServer.getProperties().put(SshServer.IDLE_TIMEOUT, String.valueOf((prefsBean.getIdleTimeout() != null ? prefsBean.getIdleTimeout() : 0) * 1000L));
+		// idle timeout, 0 means none
+		long idleSeconds = prefsBean.getIdleTimeout() != null ? prefsBean.getIdleTimeout() : 0;
+		CoreModuleProperties.IDLE_TIMEOUT.set(sshServer, Duration.ofSeconds(Math.max(0, idleSeconds)));
 
 		try {
 			// XXX preference to enable shell? seems to need root to access /dev/tty
-//			sshServer.setShellFactory(new ProcessShellFactory(new String[] {
-//				"/system/bin/sh",
-//				"-i",
-//				"-l"
-//			}));
 
 			// read keys here, cannot open private files on server callback
 			final List<KeyPair> keys = loadKeys();
 
 			// keys may not be present when started via widget
 			if (!keys.isEmpty()) {
-				// setKeyPairProvider
-				sshServer.setKeyPairProvider(new AbstractKeyPairProvider() {
-					private KeyPair ed25519KeyPair = null;
-
-					@Override
-					public Iterable<KeyPair> loadKeys() {
-						// just return keys that have been loaded before
-						return keys;
-					}
-
-					@Override
-					public KeyPair loadKey(String type) {
-						if ("ssh-ed25519".equals(type)) {
-							if (ed25519KeyPair == null) {
-								// do not rely on getKeyTypes() having been called before
-								for (KeyPair keyPair : keys) {
-									if ("Ed25519".equals(keyPair.getPrivate().getAlgorithm())) {
-										ed25519KeyPair = keyPair;
-										break;
-									}
-								}
-							}
-							return ed25519KeyPair;
-						}
-						return super.loadKey(type);
-					}
-
-					@Override
-					public String getKeyTypes() {
-						List<String> types = new ArrayList<>();
-						for (KeyPair keyPair : keys) {
-							String keyType = KeyUtils.getKeyType(keyPair);
-							if (keyType == null) {
-								String algo = keyPair.getPrivate().getAlgorithm();
-								if ("Ed25519".equals(algo)) {
-									keyType = "ssh-ed25519";
-									ed25519KeyPair = keyPair;
-								}
-							}
-							types.add(keyType);
-						}
-
-						StringBuilder sb = new StringBuilder();
-						String delimiter = "";
-						for (String type : types) {
-							sb.append(delimiter);
-							sb.append(type);
-							delimiter = ",";
-						}
-						return sb.toString();
-					}
-				});
+				sshServer.setKeyPairProvider(KeyPairProvider.wrap(keys));
 				sshServer.start();
 				return true;
 			}
@@ -354,27 +267,86 @@ public class SshServerService extends AbstractServerService
 		return false;
 	}
 
-	private static final Set<String> WEAK_ALGORITHMS = new HashSet<>(Arrays.asList(
-			"arcfour128",
-			"arcfour256",
-			// CBC mode of ssh allows recovery of plaintext, all usual clients support CTR
-			"aes128-cbc",
-			"aes192-cbc",
-			"aes256-cbc",
-			"3des-cbc",
-			"blowfish-cbc",
-			"hmac-md5",
-			"hmac-md5-96",
-			"hmac-sha1-96",
-			"diffie-hellman-group1-sha1"));
+	private SshFileSystemView createFileSystemView(final Shell.Interactive shell, SshSession session) {
+		if (quickShareBean != null) {
+			logger.debug("launching server in quick share mode");
+			return new QuickShareSshFileSystemView(
+					SshServerService.this,
+					quickShareBean.getTmpDir(),
+					session);
+		}
+		switch (prefsBean.getStorageType()) {
+			case PLAIN:
+				return new FsSshFileSystemView(
+						SshServerService.this,
+						prefsBean.getStartDir(),
+						session);
+			case ROOT:
+				return new RootSshFileSystemView(
+						SshServerService.this,
+						shell,
+						prefsBean.getStartDir(),
+						session);
+			case SAF:
+				return new SafSshFileSystemView(
+						SshServerService.this,
+						Uri.parse(prefsBean.getSafUrl()),
+						session);
+			case RO_SAF:
+				return new RoSafSshFileSystemView(
+						SshServerService.this,
+						Uri.parse(prefsBean.getSafUrl()),
+						session);
+			case VIRTUAL:
+				return new VirtualSshFileSystemView(
+						SshServerService.this,
+						new FsSshFileSystemView(
+								SshServerService.this,
+								prefsBean.getStartDir(),
+								session),
+						new RootSshFileSystemView(
+								SshServerService.this,
+								shell,
+								prefsBean.getStartDir(),
+								session),
+						new SafSshFileSystemView(
+								SshServerService.this,
+								Uri.parse(prefsBean.getSafUrl()),
+								session),
+						new RoSafSshFileSystemView(
+								SshServerService.this,
+								Uri.parse(prefsBean.getSafUrl()),
+								session),
+						prefsBean.getStartDir(),
+						session
+				);
+		}
+		return null;
+	}
 
-	private <T> List<NamedFactory<T>> withoutWeakAlgorithms(List<NamedFactory<T>> factories) {
+	/**
+	 * CBC mode of ssh allows recovery of plaintext, all usual clients support CTR, GCM or chacha20.
+	 * Key exchanges and MACs based on SHA-1 or MD5 are left for clients older than about 2014.
+	 */
+	private static boolean isWeakAlgorithm(String name) {
+		if (name == null) {
+			return false;
+		}
+		String lower = name.toLowerCase(Locale.ENGLISH);
+		return lower.endsWith("-cbc")
+				|| lower.startsWith("arcfour")
+				|| lower.startsWith("hmac-md5")
+				|| lower.startsWith("hmac-sha1")
+				|| (lower.startsWith("diffie-hellman") && lower.endsWith("-sha1"));
+	}
+
+	private <T extends NamedResource> List<T> withoutWeakAlgorithms(List<T> factories) {
 		if (factories == null) {
 			return null;
 		}
-		List<NamedFactory<T>> result = new ArrayList<>(factories.size());
-		for (NamedFactory<T> factory : factories) {
-			if (factory != null && WEAK_ALGORITHMS.contains(factory.getName())) {
+		List<T> result = new ArrayList<>(factories.size());
+		for (T factory : factories) {
+			if (factory != null && isWeakAlgorithm(factory.getName())) {
 				logger.debug("not offering weak algorithm: {}", factory.getName());
 			} else {
 				result.add(factory);

@@ -2,12 +2,18 @@
 
 ## The problem it solves
 
-Apache FtpServer and Apache SSHD each define their own file interfaces:
+The FTP library defines its own file interfaces. For SFTP the app has
+interfaces of the same shape, which originate from the SSH library used until
+2026:
 
 | | FTP | SFTP / SCP |
 |---|-----|-----------|
-| File | `org.apache.ftpserver.ftplet.FtpFile` | `org.apache.sshd.common.file.SshFile` |
-| View of a session | `org.apache.ftpserver.ftplet.FileSystemView` | `org.apache.sshd.common.file.FileSystemView` |
+| File | `org.apache.ftpserver.ftplet.FtpFile` | `org.primftpd.filesystem.SshFile` |
+| View of a session | `org.apache.ftpserver.ftplet.FileSystemView` | `org.primftpd.filesystem.SshFileSystemView` |
+
+The current SSH library does not call `SshFile` itself, it works on
+`java.nio.file`. Package `org.primftpd.sftp` translates, see
+[ssh-library.md](ssh-library.md).
 
 The app supports several kinds of storage, each must be available for both
 protocols. To avoid writing everything twice the logic of a storage type
@@ -56,8 +62,8 @@ The same pattern exists for every storage type:
 | Virtual | `VirtualFile`, `VirtualFileSystemView` | `VirtualFtp...` | `VirtualSsh...` |
 | Quick share | `QuickShareFile`, `QuickShareFileSystemView` | `QuickShareFtp...` | `QuickShareSsh...` |
 
-A `...FileSystemView` is created per client session by the factory lambdas in
-`FtpServerService` / `SshServerService`, depending on
+A `...FileSystemView` is created per client session by `FtpServerService` /
+`SshServerService`, depending on
 `PrefsBean.getStorageType()` (or quick share mode). The FTP views keep a
 working directory, the SFTP views resolve relative paths against the home
 directory.

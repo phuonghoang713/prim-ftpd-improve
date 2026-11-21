@@ -10,6 +10,7 @@ network. It needs no root: root access is one optional way to reach files.
 | [runtime-flows.md](runtime-flows.md) | Start/stop of servers, threads, how a transfer runs, timers, events |
 | [storage.md](storage.md) | File system abstraction and the storage types (plain, root, SAF, read-only SAF, virtual, quick share) |
 | [android-integration.md](android-integration.md) | Manifest components, permissions, use without root, remote control |
+| [ssh-library.md](ssh-library.md) | Why Apache MINA SSHD 2.x, and how the storage types are connected to it |
 
 State described: branch `fix/review-large-files-hardening`, 2026-11-21.
 
@@ -27,7 +28,7 @@ flowchart LR
         CTRL[ServicesStartStopUtil<br/>widget, tile, boot, Tasker]
         subgraph services [Foreground services]
             FTP[FtpServerService<br/>Apache FtpServer + MINA]
-            SSH[SshServerService<br/>Apache SSHD 0.14 + MINA]
+            SSH[SshServerService<br/>Apache MINA SSHD 2.x]
         end
         FS[File system abstraction<br/>org.primftpd.filesystem]
         PREFS[(SharedPreferences<br/>PrefsBean)]
@@ -71,7 +72,6 @@ The app has three layers:
 |------|------------|
 | `primitiveFTPd/` | The Android app (`org.primftpd`). Sources in `src/`, resources in `res/`, manifest in `AndroidManifest.xml`. |
 | `pftpd-pojo-lib/` | Plain Java library without Android dependencies: parser for `authorized_keys` (`KeyParser`) and for output of `ls -l` (`LsOutputParser`). Has the unit tests of the project. |
-| `sshd-core-0.14.0/` | Apache MINA SSHD 0.14.0, vendored as source with local patches (e.g. SFTP subsystem, SCP). |
 | `tests/tests.py` | Script for manual end to end tests against a device with real FTP / SFTP clients. |
 | `fastlane/` | Store metadata and screenshots. |
 | `gradle/libs.versions.toml` | All versions (SDK levels, plugins, libraries). |
@@ -95,12 +95,13 @@ The app has three layers:
 * **Two services, shared process state.** FTP and SFTP run independently but
   share a wake lock, the root shell and the notification. This shared state
   is reference counted in `ServerServiceHandler`.
-* **Old SSH library.** `sshd-core` 0.14 is vendored as source, the versions
-  of FtpServer and MINA are pinned to what it works with (see comment in
-  `gradle/libs.versions.toml`). It is the reason for several limitations
-  (see `code-review/security.md`).
-* **Streams, not random access.** Both server libraries ask the file system
-  for an input or output stream at an offset. Everything else (resume,
-  append, SFTP reads at arbitrary positions) is built on that.
+* **SSH library as dependency.** Apache MINA SSHD 2.x is a normal
+  dependency. It works on `java.nio.file`, the storage types of the app are
+  connected to it by an adapter (package `org.primftpd.sftp`), see
+  [ssh-library.md](ssh-library.md). Until November 2026 a patched copy of
+  version 0.14 was part of the repository.
+* **Streams, not random access.** The storage types offer an input or output
+  stream at an offset. Everything else (resume, append, SFTP reads and
+  writes at arbitrary positions) is built on that.
 * **Loose coupling by events.** Services and UI communicate through
   greenrobot EventBus, there is no bound service interface.

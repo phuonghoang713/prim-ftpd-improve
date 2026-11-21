@@ -52,6 +52,8 @@ android {
             // required due to jars
             excludes += ['META-INF/LICENSE',
                          'META-INF/NOTICE',
+                         'META-INF/LICENSE.txt',
+                         'META-INF/NOTICE.txt',
                          'META-INF/DEPENDENCIES',
                          'META-INF/BCKEY.SF',
                          'META-INF/BCKEY.DSA']
@@ -83,7 +85,6 @@ dependencies {
     // print dependency tree:
     // ./gradlew primitiveFTPd:dependencies --configuration releaseCompileClasspath
     implementation project(':pftpd-pojo-lib')
-    implementation project(':sshd-core-0.14.0')
 
     coreLibraryDesugaring(libs.google.desugar)
 
@@ -112,6 +113,10 @@ dependencies {
 
     implementation(libs.logback.android)
     implementation(libs.mina.core)
+    // ssh / sftp / scp server
+    implementation(libs.sshd.core)
+    implementation(libs.sshd.sftp)
+    implementation(libs.sshd.scp)
     implementation(libs.slf4j.api)
     implementation(libs.eventbus)
     implementation(libs.httpclient5)

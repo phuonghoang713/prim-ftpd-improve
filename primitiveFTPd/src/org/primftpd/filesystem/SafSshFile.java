@@ -1,7 +1,5 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.SshFile;
 
 import java.io.IOException;
 import java.util.List;
@@ -10,14 +8,14 @@ import androidx.documentfile.provider.DocumentFile;
 
 public class SafSshFile extends SafFile<SshFile, SafSshFileSystemView> implements SshFile {
 
-    private final Session session;
+    private final SshSession session;
 
     public SafSshFile(
             SafSshFileSystemView fileSystemView,
             String absPath,
             DocumentFile parentDocumentFile,
             DocumentFile documentFile,
-            Session session) {
+            SshSession session) {
         super(fileSystemView, absPath, parentDocumentFile, documentFile);
         this.session = session;
     }
@@ -28,7 +26,7 @@ public class SafSshFile extends SafFile<SshFile, SafSshFileSystemView> implement
             DocumentFile parentDocumentFile,
             List<String> parentNonexistentDirs,
             String name,
-            Session session) {
+            SshSession session) {
         super(fileSystemView, absPath, parentDocumentFile, parentNonexistentDirs, name);
         this.session = session;
     }

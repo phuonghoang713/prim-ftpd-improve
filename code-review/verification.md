@@ -170,3 +170,50 @@ Same environment and harness as for the second review.
 Not tested (Android or root only): R3-5 to R3-9, R3-11, R3-12. The speed of
 the password hash was measured on a desktop only (about 0.1 s), a phone
 will need several times as long per login.
+
+---
+
+# Replacement of the SSH library
+
+Same harness, built without the old library: `SshServerService` runs with
+Apache MINA SSHD 2.19.0 and the adapter of package `org.primftpd.sftp`,
+storage type plain. Client: OpenSSH 9.6 (`sftp`, `scp`, `ssh`), and the SFTP
+client of the library for raw requests.
+
+| Test | Result |
+|------|--------|
+| Algorithms negotiated with OpenSSH 9.6 | key exchange `sntrup761x25519-sha512@openssh.com`, cipher `chacha20-poly1305@openssh.com`, host key `ssh-ed25519` |
+| Algorithms offered | ciphers `chacha20-poly1305, aes128/192/256-ctr, aes128/256-gcm`; MACs `hmac-sha2-256/512` (also encrypt-then-MAC); no CBC, no SHA-1 |
+| Host key ed25519 / RSA 2048 / ECDSA 256 (generated and read by the app) | login works with each, RSA is used as `rsa-sha2-512` |
+| Password login | pass |
+| Public key login with ed25519, RSA and ECDSA client keys (parsed by `KeyParser`), unknown key | accepted / accepted / accepted / refused |
+| IP pattern which does not match the client | SFTP connection is closed at once (first version of the port left such a client hanging, fixed) |
+| SFTP download 5 GiB | pass, 34 s |
+| SFTP upload 5 GiB | pass, 31 s |
+| SFTP resume download / upload at 4 GiB + 100 bytes | pass |
+| SFTP `put -p`, four file sizes: modification time kept | pass |
+| SFTP overwrite of a larger file by a smaller one | pass |
+| SCP by SFTP protocol (default of current OpenSSH) upload | pass |
+| Legacy SCP (`scp -O`) download and upload 5 GiB, overwrite larger by smaller | pass |
+| `mkdir`, `rename`, `rmdir` of a non-empty directory (refused), `rm`, `rmdir` | pass |
+| Download of a missing file, upload into a missing directory | error message, session stays usable |
+| Raw SFTP: writes at positions 0 and 4 without truncate flag keep the rest of the file | pass |
+| Raw SFTP: reads at arbitrary positions | pass |
+| Raw SFTP: `check-file` as sent by paramiko returns the SHA-256 without length prefix, unsupported parameters give a status | pass |
+| Login limiter, password hashing, FTP tests of the earlier passes | pass |
+| Unit tests, type check without the old library | 13 of 13, no errors |
+| Byte code of the library | Java 8 class files, no calls of covariant `ByteBuffer` methods |
+
+**Not tested:**
+
+* **Android.** No Gradle build, no device. Whether the library runs on
+  Android (asynchronous sockets, security providers, packaging) is unknown,
+  see the table in `architecture/ssh-library.md`.
+* Storage types SAF, read-only SAF, root, virtual and quick share through the
+  new adapter (they use the same code path as plain storage, but were only
+  compiled).
+* Clients other than OpenSSH: FileZilla, WinSCP, paramiko / prim-sync.
+
+Before this branch is merged: `./gradlew assembleDebug`, then on a phone SFTP
+login, listing, upload and download with plain storage and with SAF, and one
+run of prim-sync if it is used.

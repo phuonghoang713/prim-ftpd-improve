@@ -1,18 +1,15 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.FileSystemView;
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.services.PftpdService;
 
 import java.io.File;
 
-public class FsSshFileSystemView extends FsFileSystemView<FsSshFile, SshFile> implements FileSystemView {
+public class FsSshFileSystemView extends FsFileSystemView<FsSshFile, SshFile> implements SshFileSystemView {
 
 	private final File homeDir;
-	private final Session session;
+	private final SshSession session;
 
-	public FsSshFileSystemView(PftpdService pftpdService, File homeDir, Session session) {
+	public FsSshFileSystemView(PftpdService pftpdService, File homeDir, SshSession session) {
 		super(pftpdService);
 		this.homeDir = homeDir;
 		this.session = session;
@@ -36,7 +33,7 @@ public class FsSshFileSystemView extends FsFileSystemView<FsSshFile, SshFile> im
 	}
 
 	@Override
-	public FileSystemView getNormalizedView() {
+	public SshFileSystemView getNormalizedView() {
 		logger.trace("getNormalizedView()");
 		return this;
 	}

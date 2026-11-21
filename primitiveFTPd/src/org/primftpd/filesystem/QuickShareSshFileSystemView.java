@@ -1,17 +1,14 @@
 package org.primftpd.filesystem;
 
-import org.apache.sshd.common.Session;
-import org.apache.sshd.common.file.FileSystemView;
-import org.apache.sshd.common.file.SshFile;
 import org.primftpd.services.PftpdService;
 
 import java.io.File;
 
-public class QuickShareSshFileSystemView extends QuickShareFileSystemView<QuickShareSshFile, SshFile> implements FileSystemView {
+public class QuickShareSshFileSystemView extends QuickShareFileSystemView<QuickShareSshFile, SshFile> implements SshFileSystemView {
 
-    private final Session session;
+    private final SshSession session;
 
-    public QuickShareSshFileSystemView(PftpdService pftpdService, File tmpDir, Session session) {
+    public QuickShareSshFileSystemView(PftpdService pftpdService, File tmpDir, SshSession session) {
         super(pftpdService, tmpDir);
         this.session = session;
     }
@@ -31,7 +28,7 @@ public class QuickShareSshFileSystemView extends QuickShareFileSystemView<QuickS
     }
 
     @Override
-    public FileSystemView getNormalizedView() {
+    public SshFileSystemView getNormalizedView() {
         logger.trace("getNormalizedView()");
         return this;
     }

@@ -21,11 +21,16 @@ listed below with the reason why it stays. Ids of this pass: `R3-`.
 | R3-11 | Tasker configuration screens were drawn below the system bars on Android 15+. | A-O1 | Layout applies window insets. | not tested (Android) |
 | R3-12 | Message of a failed server start could get lost because the thread showing it ended (found when reading R3-9 again). | new | Shown on the main thread. | not tested (Android) |
 
+## SSH library replaced (branch `feature/replace-ssh-library`)
+
+| # | Risk | Was listed as | Fix | Tested |
+|---|------|---------------|-----|--------|
+| R3-13 | **Outdated SSH library.** Apache SSHD 0.14 from 2014: key exchange with SHA-1, no strict key exchange, RSA host keys only with SHA-1 signatures, no way to update. | O2 | Replaced by Apache MINA SSHD 2.19.0 as a dependency. Offered now: post-quantum and curve25519 key exchange, chacha20-poly1305 / AES-GCM / AES-CTR, SHA-2 MACs, RSA with SHA-2, strict key exchange. CBC and everything with SHA-1 or MD5 for key exchange and MAC is not offered. See [../architecture/ssh-library.md](../architecture/ssh-library.md). | On a desktop JVM with OpenSSH 9.6, see [verification.md](verification.md). **Not on Android**, which is why it is on its own branch. |
+
 ## Not fixed, and why
 
 | # | Risk | Why it stays | What you can do |
 |---|------|--------------|-----------------|
-| O2 | The SSH library (Apache SSHD 0.14, 2014) is old: key exchange with SHA-1 is still offered for old clients, no "strict key exchange", host key signatures for RSA use SHA-1. | It can only be solved by replacing the library, which is a project of its own. Removing the SHA-1 key exchanges would lock out old clients, and it can not be tested here with such clients. The ciphers left (CTR with plain HMAC) are not affected by the Terrapin attack. | Use the default ed25519 host key and a current client. |
 | O3 | Tasker (and now PowerToggles) plugin: once enabled in the preferences, any app on the device can start and stop the server. | The plugin protocol has no authentication. Off by default, the preference links to the advisory. | Leave it disabled unless you need it. |
 | O4 | The file provider of the directory picker covers the whole file system. | Not exported, only used inside the app. Changing it means changing the vendored picker. | – |
 | O5 | FTP is not encrypted. Anonymous login gives full access. | Nature of FTP, option chosen by the user. | Use SFTP outside of a trusted network, keep anonymous login off. |
@@ -45,7 +50,9 @@ listed below with the reason why it stays. Ids of this pass: `R3-`.
 2. After 10 wrong passwords from one address, logins from that address are
    refused for one minute, also with the right password.
 3. SSH clients which only support CBC ciphers or `hmac-sha1-96` can not
-   connect anymore (clients from before about 2010).
+   connect anymore (clients from before about 2010). With the replaced SSH
+   library (R3-13) this extends to clients without SHA-2 key exchange and
+   MAC, i.e. from before about 2014.
 4. An SFTP client which writes into an existing file without asking for
    truncation keeps the rest of the file (POSIX behaviour).
 5. FTP `RMD` on a directory which is not empty fails for SAF and root
